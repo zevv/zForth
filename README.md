@@ -37,4 +37,27 @@ Some of zForth's properties:
 
 
 
+Usage
+=====
 
+zForth consists of only two files: zforth.c and zforth.h. Add both to your
+project and call `zf_init()` and `zf_bootstrap()` during initialisation. Read
+forth statements from a file or terminal and pass the strings to `zf_eval()` to
+interpret, compile and run the code.
+
+A demo application for running zForth in linux is provided here, simply run `make`
+to build.
+
+To start zforth and load the core forth code, run:
+
+````
+./zfort forth/core.zf
+````
+
+And zForth will welcome you with the startup message:
+
+````
+Welcome to zForth, 786 bytes used
+````
+
+zForth is now ready to use. 
