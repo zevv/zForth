@@ -43,7 +43,8 @@ Usage
 zForth consists of only two files: zforth.c and zforth.h. Add both to your
 project and call `zf_init()` and `zf_bootstrap()` during initialisation. Read
 forth statements from a file or terminal and pass the strings to `zf_eval()` to
-interpret, compile and run the code.
+interpret, compile and run the code. Check the embedded documentation in
+`zforth.h` for details.
 
 A demo application for running zForth in linux is provided here, simply run `make`
 to build.
