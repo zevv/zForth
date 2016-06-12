@@ -60,4 +60,26 @@ And zForth will welcome you with the startup message:
 Welcome to zForth, 786 bytes used
 ````
 
-zForth is now ready to use. 
+zForth is now ready to use. Try some of the following:
+
+Adding one and one or calculate the 144 squared:
+
+````
+1 1 + .
+144 dup * .
+````
+
+Print the sine of 10 numbers between 0 and PI
+
+````
+: pi 3.141592654 ;
+: demo 0 begin dup sin . pi 10 / + dup 10 > until ;
+demo
+````
+
+Load and run the demo Mandelbrot fractal:
+
+````
+include forth/mandel.zf
+````
+
