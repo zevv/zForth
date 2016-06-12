@@ -1,7 +1,8 @@
 
 ![zForth](/zforth.png)
 
-== zForth
+zForth
+======
 
 zForth is yet another Forth, but with some special features not found in most
 other forths. zForth was written as a lightweight scripting language for
