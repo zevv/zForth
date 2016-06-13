@@ -25,7 +25,7 @@
 typedef enum {
 	PRIM_EXIT,    PRIM_LIT,       PRIM_LTZ,  PRIM_COL,     PRIM_SEMICOL,  PRIM_ADD,
 	PRIM_SUB,     PRIM_MUL,       PRIM_DIV,  PRIM_MOD,     PRIM_DROP,     PRIM_DUP,
-	PRIM_EXECUTE, PRIM_IMMEDIATE, PRIM_PEEK, PRIM_POKE,    PRIM_SWAP,     PRIM_ROT,
+	              PRIM_IMMEDIATE, PRIM_PEEK, PRIM_POKE,    PRIM_SWAP,     PRIM_ROT,
 	PRIM_JMP,     PRIM_JMP0,      PRIM_TICK, PRIM_COMMENT, PRIM_PUSHR,    PRIM_POPR,
 	PRIM_EQUAL,   PRIM_SYS,       PRIM_PICK, PRIM_COMMA,   PRIM_KEY,      PRIM_LITS,
 	PRIM_LEN,     PRIM_AND,
@@ -36,7 +36,7 @@ typedef enum {
 const char prim_names[] =
 	_("exit")    _("lit")        _("<0")    _(":")     _("_;")        _("+")
 	_("-")       _("*")          _("/")     _("%")     _("drop")      _("dup")
-	_("execute") _("_immediate") _("@")     _("!")     _("swap")      _("rot")
+	             _("_immediate") _("@")     _("!")     _("swap")      _("rot")
 	_("jmp")     _("jmp0")       _("'")     _("_(")    _(">r")        _("r>")
 	_("=")       _("sys")        _("pick")  _(",")     _("key")       _("lits")
 	_("#")       _("&");
@@ -378,6 +378,10 @@ static int find_word(const char *name, zf_addr *word, zf_addr *code)
 }
 
 
+/*
+ * Set 'immediate' flag in last compiled word
+ */
+
 static void make_immediate(void)
 {
 	zf_cell lenflags;
@@ -386,11 +390,14 @@ static void make_immediate(void)
 }
 
 
+/*
+ * Inner interpreter
+ */
+
 static void run(const char *input)
 {
 
 	do {
-
 		if(ip >= ZF_DICT_SIZE) {
 			zf_abort(ZF_ABORT_OUTSIDE_MEM);
 		}
@@ -425,7 +432,7 @@ static void run(const char *input)
 
 
 /*
- * Run code on address 'addr', like forth's "inner interpreter"
+ * Execute bytecode from given address
  */
 
 static void execute(zf_addr addr)
@@ -492,10 +499,6 @@ static void do_prim(zf_prim op, const char *input)
 		case PRIM_LIT:
 			ip += dict_get_cell(ip, &d1);
 			zf_push(d1);
-			break;
-
-		case PRIM_EXECUTE:
-			execute(zf_pop());
 			break;
 
 		case PRIM_EXIT:
@@ -665,9 +668,6 @@ static void do_prim(zf_prim op, const char *input)
 
 static void handle_word(const char *buf)
 {
-	zf_addr w, c = 0;
-	zf_cell d;
-
 	/* If a word was requested by an earlier operation, resume with the new
 	 * word */
 
@@ -679,6 +679,7 @@ static void handle_word(const char *buf)
 
 	/* Look up the word in the dictionary */
 
+	zf_addr w, c = 0;
 	int found = find_word(buf, &w, &c);
 
 	if(found) {
@@ -687,6 +688,7 @@ static void handle_word(const char *buf)
 
 		if(COMPILING && (POSTPONE || !word_has_flag(w, ZF_FLAG_IMMEDIATE))) {
 			if(word_has_flag(w, ZF_FLAG_PRIM)) {
+				zf_cell d;
 				dict_get_cell(c, &d);
 				dict_add_op(d);
 			} else {
