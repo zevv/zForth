@@ -29,6 +29,7 @@
 : =0   0 = ;
 : not  =0 ;
 : cr   10 emit ;
+: ..   dup . ;
 
 ( memory management )
 

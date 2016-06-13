@@ -27,6 +27,7 @@ typedef enum {
 	PRIM_EXECUTE, PRIM_IMMEDIATE, PRIM_PEEK, PRIM_POKE,    PRIM_SWAP,     PRIM_ROT,
 	PRIM_JMP,     PRIM_JMP0,      PRIM_TICK, PRIM_COMMENT, PRIM_PUSHR,    PRIM_POPR,
 	PRIM_EQUAL,   PRIM_SYS,       PRIM_PICK, PRIM_COMMA,   PRIM_KEY,      PRIM_LITS,
+	PRIM_LEN,     PRIM_AND,
 
 	PRIM_COUNT
 } zf_prim;
@@ -36,7 +37,8 @@ const char prim_names[] =
 	_("-")       _("*")          _("/")     _("%")     _("drop")      _("dup")
 	_("execute") _("_immediate") _("@")     _("!")     _("swap")      _("rot")
 	_("jmp")     _("jmp0")       _("'")     _("_(")    _(">r")        _("r>")
-	_("=")       _("sys")        _("pick")  _(",")     _("key")       _("lits");
+	_("=")       _("sys")        _("pick")  _(",")     _("key")       _("lits")
+	_("#")       _("&");
 
 
 /* Stacks and dictionary memory */
@@ -418,6 +420,23 @@ static zf_result execute(zf_addr addr)
 }
 
 
+static zf_cell peek(zf_addr addr, zf_addr *len)
+{
+	zf_cell val;
+
+	if(addr < USERVAR_COUNT) {
+		val = uservar[addr];
+		*len = 1;
+	} else if(addr < ZF_DICT_SIZE) {
+		*len = dict_get_cell(addr, &val);
+	} else {
+		state = ZF_ABORT_OUTSIDE_MEM;
+	}
+
+	return val;
+}
+
+
 /*
  * Run primitive opcode
  */
@@ -464,19 +483,15 @@ static zf_result do_prim(zf_prim op, const char *input)
 		case PRIM_EXIT:
 			ip = zf_popr();
 			break;
+		
+		case PRIM_LEN:
+			d1 = peek(zf_pop(), &addr);
+			zf_push(addr);
+			break;
 
 		case PRIM_PEEK:
-			addr = zf_pop();
-			if(addr < USERVAR_COUNT) {
-				zf_push(uservar[addr]);
-				break;
-			}
-			if(addr < ZF_DICT_SIZE) {
-				dict_get_cell(addr, &d2);
-				zf_push(d2);
-			} else {
-				rv = ZF_ABORT_OUTSIDE_MEM;
-			}
+			d1 = peek(zf_pop(), &addr);
+			zf_push(d1);
 			break;
 
 		case PRIM_POKE:
@@ -610,6 +625,10 @@ static zf_result do_prim(zf_prim op, const char *input)
 			zf_push(ip);
 			zf_push(d1);
 			ip += d1;
+			break;
+		
+		case PRIM_AND:
+			zf_push((int)zf_pop() & (int)zf_pop());
 			break;
 
 		default:
