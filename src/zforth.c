@@ -15,6 +15,7 @@
 #define ZF_FLAG_PRIM      (1<<5)
 #define ZF_FLAG_LEN(v)    (v & 0x1f)
 
+
 /* This macro is used to perform boundary checks. If ZF_ENABLE_BOUNDARY_CHECKS
  * is set to 0, the boundary check code will not be compiled in to reduce size */
 
@@ -23,6 +24,7 @@
 #else
 #define CHECK(exp, abort)
 #endif
+
 
 /* Define all primitives, make sure the two tables below always match.  The
  * names are defined as a \0 separated list, terminated by double \0. This
@@ -77,14 +79,13 @@ static jmp_buf jmpbuf;
 #define TRACE     uservar[2]    /* trace enable flag */
 #define COMPILING uservar[3]    /* compiling flag */
 #define POSTPONE  uservar[4]    /* flag to indicate next imm word should be compiled */
-
-
 #define USERVAR_COUNT 5
 
 const char uservar_names[] =
 	_("here")   _("latest") _("trace")  _("compiling")  _("_postpone");
 
 static zf_addr *uservar = (zf_addr *)dict;
+
 
 /* Prototypes */
 
@@ -115,19 +116,13 @@ static const char *op_name(zf_addr addr)
 	static char name[32];
 
 	while(TRACE && w) {
-		zf_cell link;
 		zf_addr p = w;
+		zf_cell d, link, op2;
 
-		zf_cell d;
-		int lenflags;
 		p += dict_get_cell(p, &d);
-		lenflags = d;
-
+		int lenflags = d;
 		p += dict_get_cell(p, &link);
-
 		zf_addr xt = p + ZF_FLAG_LEN(lenflags);
-
-		zf_cell op2 = 0;
 		dict_get_cell(xt, &op2);
 
 		if(((lenflags & ZF_FLAG_PRIM) && addr == (zf_addr)op2) || addr == w || addr == xt) {
@@ -138,7 +133,6 @@ static const char *op_name(zf_addr addr)
 		}
 
 		w = link;
-
 	}
 	return "?";
 }
@@ -167,7 +161,7 @@ void zf_abort(zf_result reason)
 static int word_has_flag(zf_addr w, int flag)
 {
 	zf_cell d;
-	w += dict_get_cell(w, &d);
+	dict_get_cell(w, &d);
 	return !!((int)d & flag);
 }
 
@@ -235,6 +229,7 @@ static zf_cell zf_popr(void)
 static zf_addr dict_put_cell2(zf_addr addr, unsigned int vi)
 {
 	CHECK(addr < ZF_DICT_SIZE-2, ZF_ABORT_OUTSIDE_MEM);
+
 	dict[addr++] = (vi >> 8) | 0x80;
 	dict[addr++] = vi;
 	trace(" ²");
