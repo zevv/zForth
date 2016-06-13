@@ -1,7 +1,6 @@
 
 #include <ctype.h>
 #include <string.h>
-#include <stdio.h>
 #include <stdarg.h>
 #include <stdlib.h>
 #include <setjmp.h>
@@ -151,7 +150,6 @@ static const char *op_name(zf_addr addr)
 
 void zf_abort(zf_result reason)
 {
-	printf("ABORT %d\n", reason);
 	longjmp(jmpbuf, reason);
 }
 
