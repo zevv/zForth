@@ -214,7 +214,7 @@ static zf_cell zf_popr(void)
 
 
 /*
- * All accesses to dictionary memory are done through these functions
+ * All access to dictionary memory is done through these functions.
  */
 
 static void dict_put_byte(zf_addr addr, uint8_t v)
