@@ -268,7 +268,6 @@ static zf_addr dict_put_cell2(zf_addr addr, unsigned int vi)
 static zf_addr dict_put_cell(zf_addr addr, zf_cell v)
 {
 	unsigned int vi = v;
-	int l = 0;
 
 	trace("\n+" ZF_ADDR_FMT " " ZF_ADDR_FMT, addr, (zf_addr)v);
 
@@ -283,10 +282,8 @@ static zf_addr dict_put_cell(zf_addr addr, zf_cell v)
 
 	dict_put_byte(addr, 0xff);
 	dict_put_bytes(addr+1, (uint8_t *)&v, sizeof(v));
-	return sizeof(v) + 1;
 	trace(" ⁵");
-
-	return l;
+	return sizeof(v) + 1;
 }
 
 
