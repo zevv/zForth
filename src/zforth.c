@@ -154,17 +154,6 @@ void zf_abort(zf_result reason)
 }
 
 
-/*
- * Check if given flag is set on a word definition 
- */
-
-static int word_has_flag(zf_addr w, int flag)
-{
-	zf_cell d;
-	dict_get_cell(w, &d);
-	return !!((int)d & flag);
-}
-
 
 /*
  * Stack operations. 
@@ -657,7 +646,6 @@ static void do_prim(zf_prim op, const char *input)
 }
 
 
-
 /*
  * Handle incoming word. Compile or interpreted the word, or pass it to a
  * deferred primitive if it requested a word from the input stream.
@@ -681,10 +669,14 @@ static void handle_word(const char *buf)
 
 	if(found) {
 
-		/* Word found: compile or execute, depending on state */
+		/* Word found: compile or execute, depending on flags and state */
 
-		if(COMPILING && (POSTPONE || !word_has_flag(w, ZF_FLAG_IMMEDIATE))) {
-			if(word_has_flag(w, ZF_FLAG_PRIM)) {
+		zf_cell d;
+		dict_get_cell(w, &d);
+		int flags = d;
+
+		if(COMPILING && (POSTPONE || !(flags & ZF_FLAG_IMMEDIATE))) {
+			if(flags & ZF_FLAG_PRIM) {
 				zf_cell d;
 				dict_get_cell(c, &d);
 				dict_add_op(d);
