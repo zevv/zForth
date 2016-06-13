@@ -16,8 +16,8 @@ LDFLAGS += -lreadline -lm
 $(BIN): $(OBJS)
 	$(CC) $(LDFLAGS) -o $@ $(OBJS)
 
-%.o: %.c Makefile zforth.h
-	$(CC) $(CFLAGS) -MMD -c $<
+%.o: %.c Makefile src/zforth.h
+	$(CC) $(CFLAGS) -MMD -c $< -o $@
 
 clean:
 	rm -f $(BIN) $(OBJS) $(DEPS)
