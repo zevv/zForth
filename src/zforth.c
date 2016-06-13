@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <stdlib.h>
+#include <setjmp.h>
 
 #include "zforth.h"
 
@@ -49,11 +50,14 @@ static uint8_t dict[ZF_DICT_SIZE];
 
 /* State and stack and interpreter pointers */
 
-static zf_result state;
+static zf_input_state input_state;
 static zf_addr dsp;
 static zf_addr rsp;
 static zf_addr ip;
 
+/* setjmp env for handling aborts */
+
+static jmp_buf jmpbuf;
 
 /* User variables are variables which are shared between forth and C. From
  * forth these can be accessed with @ and ! at pseudo-indices in low memory, in
@@ -76,7 +80,7 @@ static zf_addr *uservar = (zf_addr *)dict;
 
 /* Prototypes */
 
-static zf_result do_prim(zf_prim prim, const char *input);
+static void do_prim(zf_prim prim, const char *input);
 static zf_addr dict_get_cell(zf_addr addr, zf_cell *v);
 
 
@@ -137,6 +141,18 @@ static const char *op_name(zf_addr addr)
 
 
 /*
+ * Handle abort by unwinding the C stack and sending control back into
+ * zf_eval()
+ */
+
+void zf_abort(zf_result reason)
+{
+	printf("ABORT %d\n", reason);
+	longjmp(jmpbuf, reason);
+}
+
+
+/*
  * Check if given flag is set on a word definition 
  */
 
@@ -165,7 +181,7 @@ void zf_push(zf_cell v)
 		trace("»" ZF_CELL_FMT " ", v);
 		dstack[dsp++] = v;
 	} else {
-		state = ZF_ABORT_DSTACK_OVERRUN;
+		zf_abort(ZF_ABORT_DSTACK_OVERRUN);
 	}
 }
 
@@ -177,7 +193,7 @@ zf_cell zf_pop(void)
 		v = dstack[--dsp];
 		trace("«" ZF_CELL_FMT " ", v);
 	} else {
-		state = ZF_ABORT_DSTACK_UNDERRUN;
+		zf_abort(ZF_ABORT_DSTACK_UNDERRUN);
 	}
 	return v;
 }
@@ -189,7 +205,7 @@ zf_cell zf_pick(zf_addr n)
 	if(CHECK(n < dsp)) {
 		v = dstack[dsp-n-1];
 	} else {
-		state = ZF_ABORT_OUTSIDE_MEM;
+		zf_abort(ZF_ABORT_OUTSIDE_MEM);
 	}
 	return v;
 }
@@ -201,7 +217,7 @@ static void zf_pushr(zf_cell v)
 		trace("r»" ZF_CELL_FMT " ", v);
 		rstack[rsp++] = v;
 	} else {
-		state = ZF_ABORT_RSTACK_OVERRUN;
+		zf_abort(ZF_ABORT_RSTACK_OVERRUN);
 	}
 }
 
@@ -213,7 +229,7 @@ static zf_cell zf_popr(void)
 		v = rstack[--rsp];
 		trace("r«" ZF_CELL_FMT " ", v);
 	} else {
-		state = ZF_ABORT_RSTACK_OVERRUN;
+		zf_abort(ZF_ABORT_RSTACK_OVERRUN);
 	}
 	return v;
 }
@@ -370,12 +386,13 @@ static void make_immediate(void)
 }
 
 
-static zf_result run(const char *input)
+static void run(const char *input)
 {
-	for(;;) {
+
+	do {
 
 		if(ip >= ZF_DICT_SIZE) {
-			return ZF_ABORT_OUTSIDE_MEM;
+			zf_abort(ZF_ABORT_OUTSIDE_MEM);
 		}
 
 		zf_cell d;
@@ -390,10 +407,11 @@ static zf_result run(const char *input)
 		ip += l;
 
 		if(code <= PRIM_COUNT) {
-			zf_result rv = do_prim(code, input);
-			if(rv == ZF_INPUT_WORD || rv == ZF_INPUT_CHAR) ip -= l;
-			if(rv != ZF_OK) return rv;
-			if(ip == 0) return ZF_OK;
+			do_prim(code, input);
+			if(input_state != ZF_INPUT_INTERPRET) {
+				ip -= l;
+			}
+
 		} else {
 			trace("%s/" ZF_ADDR_FMT " ", op_name(code), code);
 			zf_pushr(ip);
@@ -401,21 +419,23 @@ static zf_result run(const char *input)
 		}
 
 		input = NULL;
-	}
+
+	} while(input_state == ZF_INPUT_INTERPRET && ip != 0);
 }
+
 
 /*
  * Run code on address 'addr', like forth's "inner interpreter"
  */
 
-static zf_result execute(zf_addr addr)
+static void execute(zf_addr addr)
 {
 	ip = addr;
 	rsp = 0;
 	zf_pushr(0);
 
 	trace("\n[%s/" ZF_ADDR_FMT "] ", op_name(ip), ip);
-	return run(NULL);
+	run(NULL);
 
 }
 
@@ -430,7 +450,7 @@ static zf_cell peek(zf_addr addr, zf_addr *len)
 	} else if(addr < ZF_DICT_SIZE) {
 		*len = dict_get_cell(addr, &val);
 	} else {
-		state = ZF_ABORT_OUTSIDE_MEM;
+		zf_abort(ZF_ABORT_OUTSIDE_MEM);
 	}
 
 	return val;
@@ -441,23 +461,21 @@ static zf_cell peek(zf_addr addr, zf_addr *len)
  * Run primitive opcode
  */
 
-static zf_result do_prim(zf_prim op, const char *input)
+static void do_prim(zf_prim op, const char *input)
 {
 	zf_cell d1, d2, d3;
 	zf_addr addr;
-	zf_result rv = ZF_OK;
 
 	trace("(%s) ", op_name(op));
 
 	switch(op) {
 
 		case PRIM_COL:
-			if(input) {
+			if(input == NULL) {
+				input_state = ZF_INPUT_PASS_WORD;
+			} else {
 				create(input, 0);
 				COMPILING = 1;
-			} else {
-				rv = ZF_INPUT_WORD;
-				break;
 			}
 			break;
 
@@ -477,7 +495,7 @@ static zf_result do_prim(zf_prim op, const char *input)
 			break;
 
 		case PRIM_EXECUTE:
-			rv = execute(zf_pop());
+			execute(zf_pop());
 			break;
 
 		case PRIM_EXIT:
@@ -504,7 +522,7 @@ static zf_result do_prim(zf_prim op, const char *input)
 			if(addr < ZF_DICT_SIZE) {
 				dict_put_cell(addr, d2);
 			} else {
-				rv = ZF_ABORT_OUTSIDE_MEM;
+				zf_abort(ZF_ABORT_OUTSIDE_MEM);
 			}
 			break;
 
@@ -534,8 +552,10 @@ static zf_result do_prim(zf_prim op, const char *input)
 
 		case PRIM_SYS:
 			d1 = zf_pop();
-			rv = zf_host_sys((zf_syscall_id)d1, input);
-			if(rv == ZF_INPUT_WORD || rv == ZF_INPUT_CHAR) zf_push(d1); /* re-push id to resume */
+			input_state = zf_host_sys((zf_syscall_id)d1, input);
+			if(input_state != ZF_INPUT_INTERPRET) {
+				zf_push(d1); /* re-push id to resume */
+			}
 			break;
 
 		case PRIM_PICK:
@@ -595,7 +615,7 @@ static zf_result do_prim(zf_prim op, const char *input)
 
 		case PRIM_COMMENT:
 			if(!input || input[0] != ')') {
-				rv = ZF_INPUT_CHAR;
+				input_state = ZF_INPUT_PASS_CHAR;
 			}
 			break;
 
@@ -612,11 +632,10 @@ static zf_result do_prim(zf_prim op, const char *input)
 			break;
 
 		case PRIM_KEY:
-			if(input) {
-				zf_push(input[0]);
-				rv = ZF_OK;
+			if(input == NULL) {
+				input_state = ZF_INPUT_PASS_CHAR;
 			} else {
-				rv = ZF_INPUT_CHAR;
+				zf_push(input[0]);
 			}
 			break;
 
@@ -632,15 +651,9 @@ static zf_result do_prim(zf_prim op, const char *input)
 			break;
 
 		default:
-			rv = ZF_ABORT_INTERNAL_ERROR;
+			zf_abort(ZF_ABORT_INTERNAL_ERROR);
 			break;
 	}
-
-	if(state != ZF_OK) {
-		rv = state;
-	}
-
-	return rv;
 }
 
 
@@ -650,25 +663,23 @@ static zf_result do_prim(zf_prim op, const char *input)
  * deferred primitive if it requested a word from the input stream.
  */
 
-static zf_result handle_word(const char *buf)
+static void handle_word(const char *buf)
 {
 	zf_addr w, c = 0;
 	zf_cell d;
-	zf_result rv = ZF_OK;
 
 	/* If a word was requested by an earlier operation, resume with the new
 	 * word */
 
-	if(state == ZF_INPUT_WORD) {
-		state = ZF_OK;
-		return run(buf);
+	if(input_state == ZF_INPUT_PASS_WORD) {
+		input_state = ZF_INPUT_INTERPRET;
+		run(buf);
+		return;
 	}
 
 	/* Look up the word in the dictionary */
 
 	int found = find_word(buf, &w, &c);
-
-	state = ZF_OK;
 
 	if(found) {
 
@@ -683,7 +694,7 @@ static zf_result handle_word(const char *buf)
 			}
 			POSTPONE = 0;
 		} else {
-			rv = execute(c);
+			execute(c);
 		}
 	} else {
 
@@ -699,11 +710,9 @@ static zf_result handle_word(const char *buf)
 				zf_push(v);
 			}
 		} else {
-			rv = ZF_ABORT_NOT_A_WORD;
+			zf_abort(ZF_ABORT_NOT_A_WORD);
 		}
 	}
-
-	return rv;
 }
 
 
@@ -712,30 +721,30 @@ static zf_result handle_word(const char *buf)
  * char to a deferred prim if it requested a character from the input stream
  */
 
-static zf_result handle_char(char c)
+static void handle_char(char c)
 {
 	static char buf[32];
 	static size_t len = 0;
-	zf_result rv = ZF_OK;
 
-	if(state == ZF_INPUT_CHAR) {
-		state = ZF_OK;
-		return run(&c);
-	}
+	if(input_state == ZF_INPUT_PASS_CHAR) {
 
-	if(c == '\0' || isspace(c)) {
-		if(len > 0) {
-			len = 0;
-			rv = handle_word(buf);
-		}
-	} else {
+		input_state = ZF_INPUT_INTERPRET;
+		run(&c);
+
+	} else if(c != '\0' && !isspace(c)) {
+
 		if(len < sizeof(buf)-1) {
 			buf[len++] = c;
 			buf[len] = '\0';
 		}
-	}
 
-	return rv;
+	} else {
+
+		if(len > 0) {
+			len = 0;
+			handle_word(buf);
+		}
+	}
 }
 
 
@@ -812,32 +821,21 @@ void zf_bootstrap(void) {}
 
 zf_result zf_eval(const char *buf)
 {
-	zf_result rv = ZF_OK;
+	zf_result r = setjmp(jmpbuf);
 
-	for(;;) {
-		rv = handle_char(*buf);
-
-		switch(rv) {
-			case ZF_OK:
-				/* fine */
-				break;
-			case ZF_INPUT_CHAR:
-			case ZF_INPUT_WORD:
-				state = rv;
-				break;
-			default:
-				/* all abort reasons */
-				state = ZF_OK;
-				COMPILING = 0;
-				rsp = 0;
-				dsp = 0;
-				return rv;
+	if(r == ZF_OK) {
+		for(;;) {
+			handle_char(*buf);
+			if(*buf == '\0') {
+				return ZF_OK;
+			}
+			buf ++;
 		}
-
-		if(*buf == '\0') {
-			return rv;
-		}
-		buf ++;
+	} else {
+		COMPILING = 0;
+		rsp = 0;
+		dsp = 0;
+		return r;
 	}
 }
 

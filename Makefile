@@ -7,7 +7,7 @@ DEPS    := $(subst .c,.d, $(SRC))
 CC	:= $(CROSS)gcc
 
 CFLAGS  += -Os -g
-CFLAGS  += -Wall -Wextra -Werror -Wno-unused-parameter -ansi
+CFLAGS  += -Wall -Wextra -Werror -Wno-unused-parameter -Wno-clobbered -ansi
 CFLAGS	+= -Isrc
 LDFLAGS	+= -g 
 

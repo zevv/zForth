@@ -58,8 +58,6 @@ typedef unsigned int zf_addr;
 
 typedef enum {
 	ZF_OK,
-	ZF_INPUT_WORD,
-	ZF_INPUT_CHAR,
 	ZF_ABORT_INTERNAL_ERROR,
 	ZF_ABORT_OUTSIDE_MEM,
 	ZF_ABORT_DSTACK_UNDERRUN,
@@ -69,6 +67,12 @@ typedef enum {
 	ZF_ABORT_NOT_A_WORD,
 	ZF_ABORT_COMPILE_ONLY_WORD,
 } zf_result;
+
+typedef enum {
+	ZF_INPUT_INTERPRET,
+	ZF_INPUT_PASS_CHAR,
+	ZF_INPUT_PASS_WORD,
+} zf_input_state;
 
 typedef enum {
 	ZF_SYSCALL_EMIT,
@@ -85,6 +89,7 @@ void zf_init(int trace);
 void zf_bootstrap(void);
 void *zf_dump(size_t *len);
 zf_result zf_eval(const char *buf);
+void zf_abort(zf_result reason);
 
 void zf_push(zf_cell v);
 zf_cell zf_pop(void);
@@ -92,7 +97,7 @@ zf_cell zf_pick(zf_addr n);
 
 /* Host provides these functions */
 
-zf_result zf_host_sys(zf_syscall_id id, const char *last_word);
+zf_input_state zf_host_sys(zf_syscall_id id, const char *last_word);
 void zf_host_trace(const char *fmt, va_list va);
 
 

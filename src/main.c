@@ -107,10 +107,8 @@ static void load(const char *fname)
  * Sys callback function
  */
 
-zf_result zf_host_sys(zf_syscall_id id, const char *input)
+zf_input_state zf_host_sys(zf_syscall_id id, const char *input)
 {
-	zf_result rv = ZF_OK;
-
 	switch((int)id) {
 
 
@@ -145,12 +143,10 @@ zf_result zf_host_sys(zf_syscall_id id, const char *input)
 			break;
 
 		case ZF_SYSCALL_USER + 2:
-			if(input) {
-				include(input);
-				rv = ZF_OK;
-			} else {
-				rv = ZF_INPUT_WORD;
+			if(input == NULL) {
+				return ZF_INPUT_PASS_WORD;
 			}
+			include(input);
 			break;
 		
 		case ZF_SYSCALL_USER + 3:
@@ -162,7 +158,7 @@ zf_result zf_host_sys(zf_syscall_id id, const char *input)
 			break;
 	}
 
-	return rv;
+	return ZF_INPUT_INTERPRET;
 }
 
 
