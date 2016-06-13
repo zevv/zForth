@@ -15,6 +15,14 @@
 #define ZF_FLAG_PRIM      (1<<5)
 #define ZF_FLAG_LEN(v)    (v & 0x1f)
 
+/* This macro is used to perform boundary checks. If ZF_ENABLE_BOUNDARY_CHECKS
+ * is set to 0, the boundary check code will not be compiled in to reduce size */
+
+#if ZF_ENABLE_BOUNDARY_CHECKS
+#define CHECK(exp, abort) if(!(exp)) zf_abort(abort);
+#else
+#define CHECK(exp, abort)
+#endif
 
 /* Define all primitives, make sure the two tables below always match.  The
  * names are defined as a \0 separated list, terminated by double \0. This
@@ -165,72 +173,51 @@ static int word_has_flag(zf_addr w, int flag)
 
 
 /*
- * Stack operations. Boundary checking can be disabled for smaller binary
- * and faster execution.
+ * Stack operations. 
  */
-
-#if ZF_ENABLE_BOUNDARY_CHECKS
-#define CHECK(exp) exp
-#else
-#define CHECK(exp) 1
-#endif
 
 void zf_push(zf_cell v)
 {
-	if(CHECK(dsp < ZF_DSTACK_SIZE)) {
-		trace("»" ZF_CELL_FMT " ", v);
-		dstack[dsp++] = v;
-	} else {
-		zf_abort(ZF_ABORT_DSTACK_OVERRUN);
-	}
+	CHECK(dsp < ZF_DSTACK_SIZE, ZF_ABORT_DSTACK_OVERRUN);
+
+	trace("»" ZF_CELL_FMT " ", v);
+	dstack[dsp++] = v;
 }
 
 
 zf_cell zf_pop(void)
 {
-	zf_cell v = 0;
-	if(CHECK(dsp > 0)) {
-		v = dstack[--dsp];
-		trace("«" ZF_CELL_FMT " ", v);
-	} else {
-		zf_abort(ZF_ABORT_DSTACK_UNDERRUN);
-	}
+	CHECK(dsp > 0, ZF_ABORT_DSTACK_UNDERRUN);
+
+	zf_cell v = dstack[--dsp];
+	trace("«" ZF_CELL_FMT " ", v);
 	return v;
 }
 
 
 zf_cell zf_pick(zf_addr n)
 {
-	zf_cell v = 0;
-	if(CHECK(n < dsp)) {
-		v = dstack[dsp-n-1];
-	} else {
-		zf_abort(ZF_ABORT_OUTSIDE_MEM);
-	}
-	return v;
+	CHECK(n < dsp, ZF_ABORT_OUTSIDE_MEM);
+
+	return dstack[dsp-n-1];
 }
 
 
 static void zf_pushr(zf_cell v)
 {
-	if(CHECK(rsp < ZF_RSTACK_SIZE)) {
-		trace("r»" ZF_CELL_FMT " ", v);
-		rstack[rsp++] = v;
-	} else {
-		zf_abort(ZF_ABORT_RSTACK_OVERRUN);
-	}
+	CHECK(rsp < ZF_RSTACK_SIZE, ZF_ABORT_RSTACK_OVERRUN);
+
+	trace("r»" ZF_CELL_FMT " ", v);
+	rstack[rsp++] = v;
 }
 
 
 static zf_cell zf_popr(void)
 {
-	zf_cell v = 0;
-	if(CHECK(rsp > 0)) {
-		v = rstack[--rsp];
-		trace("r«" ZF_CELL_FMT " ", v);
-	} else {
-		zf_abort(ZF_ABORT_RSTACK_OVERRUN);
-	}
+	CHECK(rsp > 0, ZF_ABORT_RSTACK_UNDERRUN);
+
+	zf_cell v = rstack[--rsp];
+	trace("r«" ZF_CELL_FMT " ", v);
 	return v;
 }
 
@@ -247,6 +234,7 @@ static zf_cell zf_popr(void)
 
 static zf_addr dict_put_cell2(zf_addr addr, unsigned int vi)
 {
+	CHECK(addr < ZF_DICT_SIZE-2, ZF_ABORT_OUTSIDE_MEM);
 	dict[addr++] = (vi >> 8) | 0x80;
 	dict[addr++] = vi;
 	trace(" ²");
@@ -262,6 +250,7 @@ static zf_addr dict_put_cell(zf_addr addr, zf_cell v)
 
 	if((v - vi) == 0) {
 		if(vi < 128) {
+			CHECK(addr < ZF_DICT_SIZE-1, ZF_ABORT_OUTSIDE_MEM);
 			dict[addr++] = vi;
 			trace(" ¹");
 			return 1;
@@ -269,6 +258,7 @@ static zf_addr dict_put_cell(zf_addr addr, zf_cell v)
 		if(vi < 16384) return dict_put_cell2(addr, vi);
 	}
 
+	CHECK(addr < ZF_DICT_SIZE-sizeof(v)-1, ZF_ABORT_OUTSIDE_MEM);
 	dict[addr] = 0xff;
 	memcpy(&dict[addr+1], &v, sizeof(v));
 	return sizeof(v) + 1;
@@ -280,6 +270,8 @@ static zf_addr dict_put_cell(zf_addr addr, zf_cell v)
 
 static zf_addr dict_get_cell(zf_addr addr, zf_cell *v)
 {
+	CHECK(addr < ZF_DICT_SIZE, ZF_ABORT_OUTSIDE_MEM);
+
 	uint8_t a = dict[addr];
 
 	if(a & 0x80) {
@@ -327,6 +319,7 @@ static void dict_add_str(const char *s)
 {
 	trace("\n+" ZF_ADDR_FMT " " ZF_ADDR_FMT " s '%s'", HERE, 0, s);
 	size_t l = strlen(s);
+	CHECK(HERE < ZF_DICT_SIZE-l, ZF_ABORT_OUTSIDE_MEM);
 	memcpy(&dict[HERE], s, l);
 	HERE += l;
 }
