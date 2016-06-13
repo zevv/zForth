@@ -91,6 +91,8 @@ static zf_addr *uservar = (zf_addr *)dict;
 
 static void do_prim(zf_prim prim, const char *input);
 static zf_addr dict_get_cell(zf_addr addr, zf_cell *v);
+static void trace(const char *fmt, ...);
+static void dict_get_bytes(zf_addr addr, void *buf, size_t len);
 
 
 /* Tracing functions. If disabled, the trace() function is replaced by an empty
@@ -127,7 +129,7 @@ static const char *op_name(zf_addr addr)
 
 		if(((lenflags & ZF_FLAG_PRIM) && addr == (zf_addr)op2) || addr == w || addr == xt) {
 			int l = ZF_FLAG_LEN(lenflags);
-			memcpy(name, &dict[p], l);
+			dict_get_bytes(p, name, l);
 			name[l] = '\0';
 			return name;
 		}
@@ -173,7 +175,6 @@ static int word_has_flag(zf_addr w, int flag)
 void zf_push(zf_cell v)
 {
 	CHECK(dsp < ZF_DSTACK_SIZE, ZF_ABORT_DSTACK_OVERRUN);
-
 	trace("»" ZF_CELL_FMT " ", v);
 	dstack[dsp++] = v;
 }
@@ -182,7 +183,6 @@ void zf_push(zf_cell v)
 zf_cell zf_pop(void)
 {
 	CHECK(dsp > 0, ZF_ABORT_DSTACK_UNDERRUN);
-
 	zf_cell v = dstack[--dsp];
 	trace("«" ZF_CELL_FMT " ", v);
 	return v;
@@ -192,7 +192,6 @@ zf_cell zf_pop(void)
 zf_cell zf_pick(zf_addr n)
 {
 	CHECK(n < dsp, ZF_ABORT_OUTSIDE_MEM);
-
 	return dstack[dsp-n-1];
 }
 
@@ -200,7 +199,6 @@ zf_cell zf_pick(zf_addr n)
 static void zf_pushr(zf_cell v)
 {
 	CHECK(rsp < ZF_RSTACK_SIZE, ZF_ABORT_RSTACK_OVERRUN);
-
 	trace("r»" ZF_CELL_FMT " ", v);
 	rstack[rsp++] = v;
 }
@@ -209,10 +207,43 @@ static void zf_pushr(zf_cell v)
 static zf_cell zf_popr(void)
 {
 	CHECK(rsp > 0, ZF_ABORT_RSTACK_UNDERRUN);
-
 	zf_cell v = rstack[--rsp];
 	trace("r«" ZF_CELL_FMT " ", v);
 	return v;
+}
+
+
+/*
+ * All accesses to dictionary memory are done through these functions
+ */
+
+static void dict_put_byte(zf_addr addr, uint8_t v)
+{
+	CHECK(addr < ZF_DICT_SIZE, ZF_ABORT_OUTSIDE_MEM);
+	dict[addr] = v;
+}
+
+
+static uint8_t dict_get_byte(zf_addr addr)
+{
+	CHECK(addr < ZF_DICT_SIZE, ZF_ABORT_OUTSIDE_MEM);
+	return dict[addr];
+}
+
+
+static void dict_put_bytes(zf_addr addr, const void *buf, size_t len)
+{
+	CHECK(addr < ZF_DICT_SIZE-len, ZF_ABORT_OUTSIDE_MEM);
+	const uint8_t *p = buf;
+	while(len--) dict[addr++] = *p++;
+}
+
+
+static void dict_get_bytes(zf_addr addr, void *buf, size_t len)
+{
+	CHECK(addr < ZF_DICT_SIZE-len, ZF_ABORT_OUTSIDE_MEM);
+	uint8_t *p = buf;
+	while(len--) *p++ = dict[addr++];
 }
 
 
@@ -228,10 +259,8 @@ static zf_cell zf_popr(void)
 
 static zf_addr dict_put_cell2(zf_addr addr, unsigned int vi)
 {
-	CHECK(addr < ZF_DICT_SIZE-2, ZF_ABORT_OUTSIDE_MEM);
-
-	dict[addr++] = (vi >> 8) | 0x80;
-	dict[addr++] = vi;
+	dict_put_byte(addr+0, (vi >> 8) | 0x80);
+	dict_put_byte(addr+1, vi);
 	trace(" ²");
 	return 2;
 }
@@ -245,17 +274,15 @@ static zf_addr dict_put_cell(zf_addr addr, zf_cell v)
 
 	if((v - vi) == 0) {
 		if(vi < 128) {
-			CHECK(addr < ZF_DICT_SIZE-1, ZF_ABORT_OUTSIDE_MEM);
-			dict[addr++] = vi;
+			dict_put_byte(addr, vi);
 			trace(" ¹");
 			return 1;
 		}
 		if(vi < 16384) return dict_put_cell2(addr, vi);
 	}
 
-	CHECK(addr < ZF_DICT_SIZE-sizeof(v)-1, ZF_ABORT_OUTSIDE_MEM);
-	dict[addr] = 0xff;
-	memcpy(&dict[addr+1], &v, sizeof(v));
+	dict_put_byte(addr, 0xff);
+	dict_put_bytes(addr+1, (uint8_t *)&v, sizeof(v));
 	return sizeof(v) + 1;
 	trace(" ⁵");
 
@@ -265,20 +292,18 @@ static zf_addr dict_put_cell(zf_addr addr, zf_cell v)
 
 static zf_addr dict_get_cell(zf_addr addr, zf_cell *v)
 {
-	CHECK(addr < ZF_DICT_SIZE, ZF_ABORT_OUTSIDE_MEM);
-
-	uint8_t a = dict[addr];
+	uint8_t a = dict_get_byte(addr);
 
 	if(a & 0x80) {
 		if(a == 0xff) {
-			memcpy(v, dict+addr+1, sizeof(*v));
+			dict_get_bytes(addr+1, v, sizeof(*v));
 			return 1 + sizeof(*v);
 		} else {
-			*v = ((a & 0x3f) << 8) + dict[addr+1];
+			*v = ((a & 0x3f) << 8) + dict_get_byte(addr+1);
 			return 2;
 		}
 	} else {
-		*v = dict[addr];
+		*v = dict_get_byte(addr);
 		return 1;
 	}
 }
@@ -314,8 +339,7 @@ static void dict_add_str(const char *s)
 {
 	trace("\n+" ZF_ADDR_FMT " " ZF_ADDR_FMT " s '%s'", HERE, 0, s);
 	size_t l = strlen(s);
-	CHECK(HERE < ZF_DICT_SIZE-l, ZF_ABORT_OUTSIDE_MEM);
-	memcpy(&dict[HERE], s, l);
+	dict_put_bytes(HERE, s, l);
 	HERE += l;
 }
 
@@ -386,10 +410,6 @@ static void run(const char *input)
 {
 
 	do {
-		if(ip >= ZF_DICT_SIZE) {
-			zf_abort(ZF_ABORT_OUTSIDE_MEM);
-		}
-
 		zf_cell d;
 		zf_addr l = dict_get_cell(ip, &d);
 		zf_addr code = d;
@@ -442,10 +462,8 @@ static zf_cell peek(zf_addr addr, zf_addr *len)
 	if(addr < USERVAR_COUNT) {
 		val = uservar[addr];
 		*len = 1;
-	} else if(addr < ZF_DICT_SIZE) {
-		*len = dict_get_cell(addr, &val);
 	} else {
-		zf_abort(ZF_ABORT_OUTSIDE_MEM);
+		*len = dict_get_cell(addr, &val);
 	}
 
 	return val;
@@ -510,11 +528,7 @@ static void do_prim(zf_prim op, const char *input)
 				uservar[addr] = d2;
 				break;
 			}
-			if(addr < ZF_DICT_SIZE) {
-				dict_put_cell(addr, d2);
-			} else {
-				zf_abort(ZF_ABORT_OUTSIDE_MEM);
-			}
+			dict_put_cell(addr, d2);
 			break;
 
 		case PRIM_SWAP:
