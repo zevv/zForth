@@ -6,15 +6,15 @@ DEPS    := $(subst .c,.d, $(SRC))
 
 CC	:= $(CROSS)gcc
 
-CFLAGS  += -Os -g
-CFLAGS  += -Wall -Wextra -Werror -Wno-unused-parameter -Wno-clobbered -ansi
+CFLAGS  += -Os -g -ansi
+CFLAGS  += -Wall -Wextra -Werror -Wno-unused-parameter -Wno-clobbered -Wno-unused-result
 CFLAGS	+= -Isrc
 LDFLAGS	+= -g 
 
-LDFLAGS += -lreadline -lm
+LIBS += -lreadline -lm
 
 $(BIN): $(OBJS)
-	$(CC) $(LDFLAGS) -o $@ $(OBJS)
+	$(CC) $(LDFLAGS) -o $@ $(OBJS) $(LIBS)
 
 %.o: %.c Makefile src/zforth.h
 	$(CC) $(CFLAGS) -MMD -c $< -o $@

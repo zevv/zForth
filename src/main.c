@@ -126,7 +126,7 @@ zf_input_state zf_host_sys(zf_syscall_id id, const char *input)
 		case ZF_SYSCALL_TELL: {
 			zf_cell len = zf_pop();
 			void *buf = zf_dump(NULL) + (int)zf_pop();
-			fwrite(buf, 1, len, stdout);
+			(void)fwrite(buf, 1, len, stdout);
 			fflush(stdout); }
 			break;
 
