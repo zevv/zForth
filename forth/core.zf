@@ -19,8 +19,6 @@
 
 ( some operators and shortcuts )
 
-: ++   1 + ;
-: --   1 - ;
 : add  dup @ rot + swap ! ;
 : inc  1 swap add ;
 : dec  -1 swap add ;
@@ -30,11 +28,12 @@
 : not  =0 ;
 : cr   10 emit ;
 : ..   dup . ;
+: over 1 pick ;
 
 ( memory management )
 
 : allot  here add ;
-: var : postpone [ ' lit , here @ dup 5 + , ' exit , here @ swap ! 5 allot ; 
+: var : postpone [ ' lit , here @ dup 5 + , ' exit , here @ swap ! 5 allot ;
 
 ( 'begin' gets the current address, a jump or conditional jump back is generated
   by 'again', 'until' or 'times' )
@@ -42,7 +41,7 @@
 : begin   here @ ; immediate
 : again   ' jmp , , ; immediate
 : until   ' jmp0 , , ; immediate
-: times ' -- , ' dup , ' =0 , postpone until ; immediate
+: times ' 1 - , ' dup , ' =0 , postpone until ; immediate
 
 ( 'if' prepares conditional jump, address will be filled in by 'else' or 'fi' )
 
@@ -55,18 +54,18 @@
 
 : s" compiling @ if ' lits , here @ 0 , fi here @ begin key dup 34 = if drop
      compiling @ if here @ swap - swap ! else dup here @ swap - fi exit else , fi
-     again ; immediate 
+     again ; immediate
 
 ( Print string literal )
 
-: ." compiling @ if postpone s" ' tell , else begin key dup 34 = if drop exit else emit fi again 
+: ." compiling @ if postpone s" ' tell , else begin key dup 34 = if drop exit else emit fi again
      fi ; immediate
 
 
 ." Welcome to zForth, " here @ . ." bytes used" cr ;
 
 (
-vi: ts=3 sw=3 ft=forth 
+vi: ts=3 sw=3 ft=forth
 )
 
 

@@ -308,7 +308,7 @@ static void dict_add_cell(zf_cell v)
 static void dict_add_op(zf_addr op)
 {
 	dict_add_cell(op);
-	trace("+%s", op_name(op));
+	trace("+%s ", op_name(op));
 }
 
 
