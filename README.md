@@ -11,33 +11,34 @@ fast, but should be easy to integrate on any platform.
 
 Some of zForth's highlights:
 
-- Small dictionary: instead of relying on a fixed cell size, the dictionary is
+- **Small dictionary**: instead of relying on a fixed cell size, the dictionary is
   written in variable length cells: small and common numbers take less space
   then larger, resulting in 30% to 50% space saving
 
-- Portable: zForth is written in 100% ANSI C, and runs on virtually all
+- **Portable**: zForth is written in 100% ANSI C, and runs on virtually all
   architectures. Tested on x86, x86_64, ARM, ARM thumb, MIPS, Atmel AVR and the
   8051.
 
-- Small footprint: the kernel C code compiles to about 3 or 4 kB of machine
+- **Small footprint**: the kernel C code compiles to about 3 or 4 kB of machine
   code, depending on the architecture and chosen cell data types.
 
-- Tracing: zForth is able to show a nice trace of what it is doing under the
+- **Tracing**: zForth is able to show a nice trace of what it is doing under the
   hood, see below for an example.
 
-- Implemented as a small virtual machine: not the fastest, but safe and
+- **VM**: Implemented as a small virtual machine: not the fastest, but safe and
   flexible. Instead of having direct access to host memory, the forth VM memory
   is abstracted, allowing proper boundary checking on memory accesses and stack
   operations.
 
-- Flexible data types: at compile time the user is free to choose what C data
+- **Flexible data types**: at compile time the user is free to choose what C data
   type should be used for the dictionary and the stacks. zForth supports signed
   integer sizes from 16 to 128 bit, but also works seamlessly with floating point
   types like float and double.
 
-- Easy extendibility: calling C code from forth is easy through a host system
+- **Ease interfacing**: calling C code from forth is easy through a host system
   call primitive, and code has access to the stack for exchanging data between
-  Forth and C.
+  Forth and C. Calling forth from C is easy, just one function to evaluate forth 
+  code.
 
 
 
