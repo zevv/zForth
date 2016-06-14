@@ -6,7 +6,7 @@ zForth
 
 zForth is yet another Forth, but with some special features not found in most
 other forths. zForth was written as a lightweight scripting language for
-extending embedded applications on small microprocessors. It's not particulary
+extending embedded applications on small microprocessors. It's not particularly
 fast, but should be easy to integrate on any platform.
 
 Some of zForth's highlights:
@@ -16,7 +16,8 @@ Some of zForth's highlights:
   then larger, resulting in 30% to 50% space saving
 
 - Portable: zForth is written in 100% ANSI C, and runs on virtually all
-  architectures. Tested on x86, x86_64, ARM, ARM thumb, Mips, Atmel AVR and 8051
+  architectures. Tested on x86, x86_64, ARM, ARM thumb, MIPS, Atmel AVR and the
+  8051.
 
 - Small footprint: the kernel C code compiles to about 3 or 4 kB of machine
   code, depending on the architecture and chosen cell data types.
@@ -52,7 +53,7 @@ interpret, compile and run the code. Check the embedded documentation in
 A demo application for running zForth in linux is provided here, simply run `make`
 to build.
 
-To start zforth and load the core forth code, run:
+To start zForth and load the core forth code, run:
 
 ````
 ./zfort forth/core.zf
