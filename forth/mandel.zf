@@ -2,15 +2,15 @@
 ( mandelbrot, using complex numbers )
 
 var x
+: chars    s" .--=o+*#%@" ;
 : c+       rot swap + rot rot + swap ;
 : c2       swap dup dup * rot dup dup * rot swap - rot rot 2 * * ;
 : abs      dup dup * 2 pick dup * + ;
 : iter     c2 3 pick 3 pick c+ ;
-: point    0 x ! 0 0 begin iter abs 4 > if exit fi x @ 1 + dup x ! 75 > if exit fi again ;
-: output   3 / 69 + emit ;
+: point    0 x ! 0 0 begin iter abs 4 > if exit fi x @ 1 + dup x ! 28 > if exit fi again ;
+: output   3 / chars drop + @ emit ;
 : line     -1 begin point drop drop 0.03 + x @ output dup 1 > until drop 10 emit ;
 : rows     -2 begin line 0.06 + dup 0.5 > until drop ;
 : mandel   trace @ 0 trace ! 10 emit rows trace ! ;
 
 mandel
-
