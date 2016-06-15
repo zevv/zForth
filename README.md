@@ -93,17 +93,19 @@ include forth/mandel.zf
 Tracing
 =======
 
-zForth can write verbose traces of the code it is compiling and running. Make sure the 
-feature ZF_ENABLE_TRACING is enabled in zforth.h. Below is an example trace
-of the following program:
+zForth can write verbose traces of the code it is compiling and running. To enable
+tracing, run `./zforth` with the `-t` argument. Tracing can be enabled at run time 
+by writing `1` in the `trace` variable:
 
-````
-: square dup * ;
-: test 5 square . ;
-test
-````
+```
+1 trace !
+```
 
-The following symbols are used in tracing:
+Make sure the feature ZF_ENABLE_TRACING is enabled in zforth.h to compile in
+tracing support.
+
+
+The following symbols are used:
 
 - stack operations are prefixed with a double arrow, `«` means pop, `»` means push.
   for operations on the return stack the arrow is prefixed with an `r`
@@ -119,7 +121,15 @@ The following symbols are used in tracing:
 - lines starting with `===` show the creation of a new word
 
 
-Here is a trace of execution of the word `test` as defined above.
+Below is an example trace of the following program:
+
+````
+: square dup * ;
+: test 5 square . ;
+test
+````
+
+Executing the word `test`:
 
 ````
 test
