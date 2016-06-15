@@ -496,7 +496,7 @@ static void do_prim(zf_prim op, const char *input)
 			break;
 		
 		case PRIM_LEN:
-			d1 = peek(zf_pop(), &addr);
+			peek(zf_pop(), &addr);
 			zf_push(addr);
 			break;
 
@@ -677,7 +677,6 @@ static void handle_word(const char *buf)
 
 		if(COMPILING && (POSTPONE || !(flags & ZF_FLAG_IMMEDIATE))) {
 			if(flags & ZF_FLAG_PRIM) {
-				zf_cell d;
 				dict_get_cell(c, &d);
 				dict_add_op(d);
 			} else {
