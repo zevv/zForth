@@ -19,9 +19,9 @@
 
 ( some operators and shortcuts )
 
-: add  dup @ rot + swap ! ;
-: inc  1 swap add ;
-: dec  -1 swap add ;
+: +!   dup @ rot + swap ! ;
+: inc  1 swap +! ;
+: dec  -1 swap +! ;
 : <    - <0 ;
 : >    swap < ;
 : =0   0 = ;
@@ -32,7 +32,7 @@
 
 ( memory management )
 
-: allot  here add ;
+: allot  here +!  ;
 : var : postpone [ ' lit , here @ dup 5 + , ' exit , here @ swap ! 5 allot ;
 
 ( 'begin' gets the current address, a jump or conditional jump back is generated
