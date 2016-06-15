@@ -1,8 +1,6 @@
 #ifndef zforth_h
 #define zforth_h
 
-#include <stdint.h>
-
 /* ==================== Configurable options =================== */
 
 
@@ -27,6 +25,14 @@
  * Enabling adds a few hundred bytes to the .text and .rodata segments */
  
 #define ZF_ENABLE_BOOTSTRAP 1
+
+
+/* Set to 1 to enable typed access to memory. This allows memory read and write 
+ * of signed and unsigned memory of 8, 16 and 32 bits width, as well as the zf_cell 
+ * type. This adds a few hundred bytes of .text. Check the memaccess.zf file for
+ * examples how to use these operations */
+
+#define ZF_ENABLE_TYPED_MEM_ACCESS 1
 
 
 /* Type to use for the basic cell, data stack and return stack. Choose a signed
@@ -66,7 +72,19 @@ typedef enum {
 	ZF_ABORT_RSTACK_OVERRUN,
 	ZF_ABORT_NOT_A_WORD,
 	ZF_ABORT_COMPILE_ONLY_WORD,
+	ZF_ABORT_INVALID_SIZE,
 } zf_result;
+
+typedef enum {
+	ZF_MEM_SIZE_VAR,
+	ZF_MEM_SIZE_CELL,
+	ZF_MEM_SIZE_U8,
+	ZF_MEM_SIZE_U16,
+	ZF_MEM_SIZE_U32,
+	ZF_MEM_SIZE_S8,
+	ZF_MEM_SIZE_S16,
+	ZF_MEM_SIZE_S32,
+} zf_mem_size;
 
 typedef enum {
 	ZF_INPUT_INTERPRET,

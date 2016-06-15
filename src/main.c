@@ -21,7 +21,7 @@
  * Evaluate buffer with code, check return value and report errors
  */
 
-zf_result do_eval(const char *buf)
+zf_result do_eval(const char *src, int line, const char *buf)
 {
 	const char *msg = NULL;
 
@@ -29,6 +29,7 @@ zf_result do_eval(const char *buf)
 
 	switch(rv)
 	{
+		case ZF_OK: break;
 		case ZF_ABORT_INTERNAL_ERROR: msg = "internal error"; break;
 		case ZF_ABORT_OUTSIDE_MEM: msg = "outside memory"; break;
 		case ZF_ABORT_DSTACK_OVERRUN: msg = "dstack overrun"; break;
@@ -37,14 +38,14 @@ zf_result do_eval(const char *buf)
 		case ZF_ABORT_RSTACK_UNDERRUN: msg = "rstack underrun"; break;
 		case ZF_ABORT_NOT_A_WORD: msg = "not a word"; break;
 		case ZF_ABORT_COMPILE_ONLY_WORD: msg = "compile-only word"; break;
-		default: break;
+		case ZF_ABORT_INVALID_SIZE: msg = "invalid size"; break;
+		default: msg = "unknown error";
 	}
 
 	if(msg) {
 		fprintf(stderr, "\e[31m");
-		fprintf(stderr, "\n%s\n", buf);
-		fprintf(stderr, "abort: %s\n", msg);
-		fprintf(stderr, "\e[0m");
+		if(src) fprintf(stderr, "%s:%d: ", src, line);
+		fprintf(stderr, "%s\e[0m\n", msg);
 	}
 
 	return rv;
@@ -60,9 +61,11 @@ void include(const char *fname)
 	char buf[256];
 
 	FILE *f = fopen(fname, "r");
+	int line = 1;
 	if(f) {
 		while(fgets(buf, sizeof(buf), f)) {
-			do_eval(buf);
+			zf_result r = do_eval(fname, line++, buf);
+			if(r != ZF_OK) exit(1);
 		}
 		fclose(f);
 	} else {
@@ -252,7 +255,8 @@ int main(int argc, char **argv)
 
 		if(strlen(buf) > 0) {
 
-			do_eval(buf);
+			do_eval(NULL, 0, buf);
+			printf("\n");
 
 			add_history(buf);
 			write_history(".zforth.hist");

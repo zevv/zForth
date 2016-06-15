@@ -2,7 +2,7 @@
 ( mandelbrot, using complex numbers )
 
 var x
-: chars    s" .--=o+*#%@" ;
+: chars    s" .--=o+*#% " ;
 : c+       rot swap + rot rot + swap ;
 : c2       swap dup dup * rot dup dup * rot swap - rot rot 2 * * ;
 : abs      dup dup * 2 pick dup * + ;

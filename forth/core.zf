@@ -11,6 +11,10 @@
 : include 130 sys ;
 : save    131 sys ;
 
+: !    0 !! ;
+: @    0 @@ ;
+: ,    0 ,, ;
+
 ( compiler state )
 
 : [ 0 compiling ! ; immediate
@@ -29,6 +33,7 @@
 : >=   swap <= ;
 : =0   0 = ;
 : not  =0 ;
+: !=   = not ;
 : cr   10 emit ;
 : ..   dup . ;
 
