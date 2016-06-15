@@ -1,0 +1,20 @@
+
+In this directory you can find various snippets, examples and tests of zForth
+code.
+
+
+core.zf           This file defines basic forth words and control structures.
+                  You will probably need this if you want to do anything useful,
+                  and all other examples and snippets depend on this.
+
+
+dict.zf           Some operations for finding and listing words in the dictionary
+
+mandel.zf         Demo ASCII mandelbrot, requires a floating point type for zf_cell
+
+memaccess.zf      Words for accessing memory with various types.
+
+misc.zf           Various stuff I use which has no other place to go
+
+strings.zf        String operations
+
