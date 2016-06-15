@@ -9,7 +9,7 @@
 
 ( Below are some tests for memory access with various sizes and types )
 
-: assert != if ." fail: " . 10 cr fi ;
+: assert != if . 10 cr fi ;
 : pos here @ ;
 
 0.1 dup pos !c pos @c assert
