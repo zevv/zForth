@@ -19,16 +19,18 @@
 
 ( some operators and shortcuts )
 
+: over 1 pick ;
 : +!   dup @ rot + swap ! ;
 : inc  1 swap +! ;
 : dec  -1 swap +! ;
 : <    - <0 ;
 : >    swap < ;
+: <=   over over >r >r < r> r> = + ;
+: >=   swap <= ;
 : =0   0 = ;
 : not  =0 ;
 : cr   10 emit ;
 : ..   dup . ;
-: over 1 pick ;
 
 ( memory management )
 
