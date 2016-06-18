@@ -1,6 +1,4 @@
 
-( basic operators for building )
-
 ( system calls )
 
 : emit    0 sys ;
@@ -66,13 +64,14 @@
 : fi      here @ swap ! ; immediate
 
 
-( forth style 'do' and 'loop' )
+( forth style 'do' and 'loop', including loop iterators 'i' and 'j' )
 
 : i ' lit , 0 , ' pickr , ; immediate
 : j ' lit , 3 , ' pickr , ; immediate
 : do ' swap , ' >r , ' >r , here @ ; immediate
 : loop+ ' r> , ' + , ' dup , ' >r , ' lit , 1 , ' pickr , ' > , ' jmp0 , , ' r> , ' drop , ' r> , ' drop , ; immediate
 : loop ' lit , 1 , postpone loop+ ;  immediate
+
 
 ( Create string literal, puts length and address on the stack )
 
