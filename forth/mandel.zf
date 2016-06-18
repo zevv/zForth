@@ -1,16 +1,43 @@
 
-( mandelbrot, using complex numbers )
+( calculate and draw mandelbrot fracal )
 
-var x
 : chars    s" .--=o+*#% " ;
+: output   5 / chars drop + @ emit ;
+
+( Ar Ai Br Bi -- Cr Ci : Add two complex numbers )
+
 : c+       rot swap + rot rot + swap ;
+
+( Ar Ai -- A²r A²i : Square a complex number )
+
 : c2       swap dup dup * rot dup dup * rot swap - rot rot 2 * * ;
-: abs      dup dup * 2 pick dup * + ;
-: iter     c2 3 pick 3 pick c+ ;
-: point    0 x ! 0 0 begin iter abs 4 > if exit fi x @ 1 + dup x ! 28 > if exit fi again ;
-: output   3 / chars drop + @ emit ;
-: line     -1 begin point drop drop 0.03 + x @ output dup 1 > until drop 10 emit ;
-: rows     -2 begin line 0.06 + dup 0.5 > until drop ;
-: mandel   trace @ 0 trace ! 10 emit rows trace ! ;
+
+( Ar Ai -- abs A  : absolute value of complex number )
+
+: abs      * 2 pick dup * + ;
+
+( Cr Ci n Zr Ci -- Cr Ci n Zr Ci : do one iteration of complex Z²+C  )
+
+: iter
+	c2
+	4 pick 4 pick c+
+	rot 1 + rot rot ;
+
+( Cr Ci -- n : find number of iterations before complex point C goes out of bounds )
+
+: point
+	0 0 0
+	begin
+		iter
+		over over abs 4 >
+		3 pick 48 >
+		+
+	until
+	drop drop rot rot drop drop ;
+
+: rows   1.0 -1.0 do j i point output 0.020 loop+ cr ;
+: mandel 0.5 -2.0 do rows             0.038 loop+ ; 
 
 mandel
+
+

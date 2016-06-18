@@ -7,7 +7,7 @@
  * tracing at run time when calling zf_init() or by setting the 'trace' user
  * variable to 1 */
 
-#define ZF_ENABLE_TRACE 0
+#define ZF_ENABLE_TRACE 1
 
 
 /* Set to 1 to add boundary checks to stack operations. Increases .text size

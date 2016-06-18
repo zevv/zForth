@@ -35,7 +35,7 @@
 typedef enum {
 	PRIM_EXIT,    PRIM_LIT,       PRIM_LTZ,  PRIM_COL,     PRIM_SEMICOL,  PRIM_ADD,
 	PRIM_SUB,     PRIM_MUL,       PRIM_DIV,  PRIM_MOD,     PRIM_DROP,     PRIM_DUP,
-	              PRIM_IMMEDIATE, PRIM_PEEK, PRIM_POKE,    PRIM_SWAP,     PRIM_ROT,
+	PRIM_PICKR,   PRIM_IMMEDIATE, PRIM_PEEK, PRIM_POKE,    PRIM_SWAP,     PRIM_ROT,
 	PRIM_JMP,     PRIM_JMP0,      PRIM_TICK, PRIM_COMMENT, PRIM_PUSHR,    PRIM_POPR,
 	PRIM_EQUAL,   PRIM_SYS,       PRIM_PICK, PRIM_COMMA,   PRIM_KEY,      PRIM_LITS,
 	PRIM_LEN,     PRIM_AND,
@@ -46,7 +46,7 @@ typedef enum {
 const char prim_names[] =
 	_("exit")    _("lit")        _("<0")    _(":")     _("_;")        _("+")
 	_("-")       _("*")          _("/")     _("%")     _("drop")      _("dup")
-	             _("_immediate") _("@@")    _("!!")    _("swap")      _("rot")
+	_("pickr")   _("_immediate") _("@@")    _("!!")    _("swap")      _("rot")
 	_("jmp")     _("jmp0")       _("'")     _("_(")    _(">r")        _("r>")
 	_("=")       _("sys")        _("pick")  _(",,")    _("key")       _("lits")
 	_("#")       _("&");
@@ -178,7 +178,7 @@ zf_cell zf_pop(void)
 
 zf_cell zf_pick(zf_addr n)
 {
-	CHECK(n < dsp, ZF_ABORT_OUTSIDE_MEM);
+	CHECK(n < dsp, ZF_ABORT_DSTACK_UNDERRUN);
 	return dstack[dsp-n-1];
 }
 
@@ -198,6 +198,13 @@ static zf_cell zf_popr(void)
 	trace("r«" ZF_CELL_FMT " ", v);
 	return v;
 }
+
+zf_cell zf_pickr(zf_addr n)
+{
+	CHECK(n < rsp, ZF_ABORT_RSTACK_UNDERRUN);
+	return rstack[rsp-n-1];
+}
+
 
 
 /*
@@ -582,6 +589,11 @@ static void do_prim(zf_prim op, const char *input)
 		case PRIM_PICK:
 			addr = zf_pop();
 			zf_push(zf_pick(addr));
+			break;
+		
+		case PRIM_PICKR:
+			addr = zf_pop();
+			zf_push(zf_pickr(addr));
 			break;
 
 		case PRIM_SUB:
