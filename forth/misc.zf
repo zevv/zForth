@@ -5,3 +5,15 @@
 : min  over over > if swap fi drop ;
 
 
+( calculate fibionacci numbers from 1 to 1e9 )
+
+: fib 1 1 begin .. dup rot rot + dup 1e9 > until ;
+
+
+( fizzbuzz! )
+
+: fizz 3 % =0 dup if ." Fizz" fi ;
+: buzz 5 % =0 dup if ." Buzz" fi ;
+: fizbuzz 1 begin dup dup fizz swap buzz + if 32 emit else .. fi 1 + dup 100 > until cr ;
+
+fizbuzz

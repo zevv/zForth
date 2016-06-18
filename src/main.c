@@ -64,8 +64,7 @@ void include(const char *fname)
 	int line = 1;
 	if(f) {
 		while(fgets(buf, sizeof(buf), f)) {
-			zf_result r = do_eval(fname, line++, buf);
-			if(r != ZF_OK) exit(1);
+			do_eval(fname, line++, buf);
 		}
 		fclose(f);
 	} else {
