@@ -91,7 +91,6 @@ static zf_addr *uservar = (zf_addr *)dict;
 
 static void do_prim(zf_prim prim, const char *input);
 static zf_addr dict_get_cell(zf_addr addr, zf_cell *v, zf_mem_size size);
-static void trace(const char *fmt, ...);
 static void dict_get_bytes(zf_addr addr, void *buf, size_t len);
 
 

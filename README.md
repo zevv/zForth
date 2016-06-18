@@ -7,7 +7,8 @@ zForth
 zForth is yet another Forth, but with some special features not found in most
 other forths. zForth was written as a lightweight scripting language for
 extending embedded applications on small microprocessors. It's not particularly
-fast, but should be easy to integrate on any platform.
+fast, but should be easy to integrate on any platform with a few kb's of ROM
+and RAM.
 
 Some of zForth's highlights:
 
@@ -41,6 +42,16 @@ Some of zForth's highlights:
   code.
 
 
+Source layout
+=============
+
+```
+./forth         : core zforth library and various snippets and examples
+./src/zforth    : zfort core source; embed these into your program
+./src/linux     : example linux application
+./src/atmega8   : example AVR atmega8 application
+```
+
 
 Usage
 =====
@@ -57,7 +68,7 @@ to build.
 To start zForth and load the core forth code, run:
 
 ````
-./zfort forth/core.zf
+./src/linux/zfort forth/core.zf
 ````
 
 And zForth will welcome you with the startup message:
@@ -101,7 +112,7 @@ by writing `1` in the `trace` variable:
 1 trace !
 ```
 
-Make sure the feature ZF_ENABLE_TRACING is enabled in zforth.h to compile in
+Make sure the feature ZF_ENABLE_TRACING is enabled in zfconf.h to compile in
 tracing support.
 
 
@@ -120,8 +131,6 @@ The following symbols are used:
 
 - lines starting with `===` show the creation of a new word
 
-
-Below is an example trace of the following program:
 
 ````
 : square dup * ;

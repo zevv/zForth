@@ -1,14 +1,17 @@
 
 BIN	:= zforth
-SRC	:= src/main.c src/zforth.c
+SRC	:= main.c zforth.c
+
 OBJS    := $(subst .c,.o, $(SRC))
 DEPS    := $(subst .c,.d, $(SRC))
 
 CC	:= $(CROSS)gcc
 
+VPATH   := ../zforth
+CFLAGS	+= -I. -I../zforth
+
 CFLAGS  += -Os -g -ansi
 CFLAGS  += -Wall -Wextra -Werror -Wno-unused-parameter -Wno-clobbered -Wno-unused-result
-CFLAGS	+= -Isrc
 LDFLAGS	+= -g 
 
 LIBS += -lreadline -lm
@@ -17,7 +20,7 @@ $(BIN): $(OBJS)
 	$(CC) $(LDFLAGS) -o $@ $(OBJS) $(LIBS)
 
 %.o: %.c Makefile src/zforth.h
-	$(CC) $(CFLAGS) -MMD -c $< -o $@
+	$(CC) $(CFLAGS) -MMD -c $<
 
 clean:
 	rm -f $(BIN) $(OBJS) $(DEPS)
