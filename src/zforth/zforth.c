@@ -1,5 +1,6 @@
 
 #include <ctype.h>
+#include <stdio.h>
 #include <string.h>
 #include <stdarg.h>
 #include <stdlib.h>
@@ -105,7 +106,7 @@ static void trace(const char *fmt, ...)
 	if(TRACE) {
 		va_list va;
 		va_start(va, fmt);
-		zf_host_trace(fmt, va);
+		vprintf(fmt, va);
 		va_end(va);
 	}
 }
@@ -736,16 +737,12 @@ static void handle_word(const char *buf)
 		/* Word not found: try to convert to a number and compile or push, depending
 		 * on state */
 
-		char *end;
-		zf_cell v = strtod(buf, &end);
-		if(end != buf) {
-			if(COMPILING) {
-				dict_add_lit(v);
-			} else {
-				zf_push(v);
-			}
+		zf_cell v = zf_host_parse_num(buf);
+
+		if(COMPILING) {
+			dict_add_lit(v);
 		} else {
-			zf_abort(ZF_ABORT_NOT_A_WORD);
+			zf_push(v);
 		}
 	}
 }

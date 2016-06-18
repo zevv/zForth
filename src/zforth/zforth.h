@@ -60,6 +60,6 @@ zf_cell zf_pick(zf_addr n);
 
 zf_input_state zf_host_sys(zf_syscall_id id, const char *last_word);
 void zf_host_trace(const char *fmt, va_list va);
-
+zf_cell zf_host_parse_num(const char *buf);
 
 #endif

@@ -1,42 +1,46 @@
 
 /*
  * Example zforth main app for atmega8. This is about the smallest environment
- * in which zForth can be useful. Memory could be saved by leaving out ZF_ENABLE_BOOTSTRAP
- * and provide the basic dictionary through some other method, but that would make this
- * example overly complicated.
+ * in which zForth can be useful. Memory could be saved by leaving out
+ * ZF_ENABLE_BOOTSTRAP and provide the basic dictionary through some other
+ * method, but that would make this example overly complicated.
  */
 
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <stdarg.h>
 
 #include <avr/io.h>
 #include "zforth.h"
 
 #define UART_BAUD(baudrate)     ((F_CPU / baudrate) / 16 - 1)
 
-void uart_init(uint16_t baudrate);
+static void uart_init(uint16_t baudrate);
 static int uart_tx(char c, FILE *f);
-int uart_rx(FILE *);
+static int uart_rx(FILE *);
+static FILE f = FDEV_SETUP_STREAM(uart_tx, uart_rx, _FDEV_SETUP_RW);
+
+static char buf[32];
 
 
 int main(void)
 {
-
 	/* Setup stdin/stdout */
 
 	uart_init(UART_BAUD(115200));
-        fdevopen(uart_tx, uart_rx);
+	stdout = stdin = &f;
 
 
 	/* Initialize zforth */
 
-	zf_init(0);
+	zf_init(1);
 	zf_bootstrap();
+	zf_eval(": . 1 sys ;");
 
 
 	/* Main loop: read words and eval */
 
-	char buf[64];
 	uint8_t l = 0;
 
 	for(;;) {
@@ -56,7 +60,6 @@ int main(void)
 }
 
 
-
 zf_input_state zf_host_sys(zf_syscall_id id, const char *input)
 {
 	switch((int)id) {
@@ -72,6 +75,23 @@ zf_input_state zf_host_sys(zf_syscall_id id, const char *input)
 	}
 
 	return 0;
+}
+
+
+zf_cell zf_host_parse_num(const char *buf)
+{
+	char *end;
+        zf_cell v = strtol(buf, &end, 0);
+	if(*end != '\0') {
+                zf_abort(ZF_ABORT_NOT_A_WORD);
+        }
+        return v;
+}
+
+
+void zf_host_trace(const char *fmt, va_list va)
+{
+	printf(fmt, va);
 }
 
 

@@ -13,7 +13,7 @@ CFLAGS	+= -I. -I../zforth
 
 CFLAGS	+= -DF_CPU=11059200
 CFLAGS	+= -mmcu=atmega8
-CFLAGS	+= -Os -g -ansi
+CFLAGS	+= -Os -g -ansi -MMD
 CFLAGS	+= -Wall -Wextra -Werror -Wno-unused-parameter -Wno-clobbered -Wno-unused-result
 
 LDFLAGS	+= -Wl,-u,vfprintf -lprintf_min
@@ -29,9 +29,6 @@ $(IHX): $(BIN)
 
 $(BIN): $(OBJS)
 	$(CC) $(LDFLAGS) -o $@ $(OBJS) $(LIBS)
-
-%.o: %.c Makefile 
-	$(CC) $(CFLAGS) -MMD -c $< -o $@
 
 install: $(IHX)
 	avrdude -p m8 -c avrispv2 -P usb -y -e -U flash:w:$(IHX):i

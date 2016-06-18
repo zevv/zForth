@@ -176,6 +176,21 @@ void zf_host_trace(const char *fmt, va_list va)
 }
 
 
+/*
+ * Parse number
+ */
+
+zf_cell zf_host_parse_num(const char *buf)
+{
+	zf_cell v;
+	int r = sscanf(buf, "%f", &v);
+	if(r == 0) {
+		zf_abort(ZF_ABORT_NOT_A_WORD);
+	}
+	return v;
+}
+
+
 void usage(void)
 {
 	fprintf(stderr, 
