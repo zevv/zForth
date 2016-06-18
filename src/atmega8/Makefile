@@ -16,7 +16,6 @@ CFLAGS	+= -mmcu=atmega8
 CFLAGS	+= -Os -g -ansi -MMD
 CFLAGS	+= -Wall -Wextra -Werror -Wno-unused-parameter -Wno-clobbered -Wno-unused-result
 
-LDFLAGS	+= -Wl,-u,vfprintf -lprintf_min
 LDFLAGS	+= -g
 LDFLAGS	+= -mmcu=atmega8
 

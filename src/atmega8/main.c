@@ -28,7 +28,7 @@ int main(void)
 {
 	/* Setup stdin/stdout */
 
-	uart_init(UART_BAUD(115200));
+	uart_init(UART_BAUD(9600));
 	stdout = stdin = &f;
 
 
@@ -48,7 +48,7 @@ int main(void)
 		putchar(c);
 		if(c == 10 || c == 13 || c == 32) {
 			zf_result r = zf_eval(buf);
-			if(r != ZF_OK) printf("A%d\n", r);
+			if(r != ZF_OK) puts("A");
 			l = 0;
 		} else if(l < sizeof(buf)-1) {
 			buf[l++] = c;
@@ -62,6 +62,8 @@ int main(void)
 
 zf_input_state zf_host_sys(zf_syscall_id id, const char *input)
 {
+	char buf[16];
+
 	switch((int)id) {
 
 		case ZF_SYSCALL_EMIT:
@@ -70,7 +72,8 @@ zf_input_state zf_host_sys(zf_syscall_id id, const char *input)
 			break;
 
 		case ZF_SYSCALL_PRINT:
-			printf(ZF_CELL_FMT " ", zf_pop());
+			itoa(zf_pop(), buf, 10);
+			puts(buf);
 			break;
 	}
 
@@ -86,12 +89,6 @@ zf_cell zf_host_parse_num(const char *buf)
                 zf_abort(ZF_ABORT_NOT_A_WORD);
         }
         return v;
-}
-
-
-void zf_host_trace(const char *fmt, va_list va)
-{
-	printf(fmt, va);
 }
 
 
