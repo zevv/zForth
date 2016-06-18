@@ -19,8 +19,8 @@ CFLAGS	+= -Wall -Wextra -Werror -Wno-unused-parameter -Wno-clobbered -Wno-unused
 LDFLAGS	+= -g
 LDFLAGS	+= -mmcu=atmega8
 
-CFLAGS  += -ffunction-sections -fdata-sections
-LDFLAGS += -Wl,--gc-sections
+CFLAGS  += -flto
+LDFLAGS += -flto
 
 $(IHX): $(BIN)
 	avr-objcopy -j .text -j .data -O ihex $(BIN) $(IHX)

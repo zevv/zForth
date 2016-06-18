@@ -105,7 +105,7 @@ static void trace(const char *fmt, ...)
 	if(TRACE) {
 		va_list va;
 		va_start(va, fmt);
-		vprintf(fmt, va);
+		zf_host_trace(fmt, va);
 		va_end(va);
 	}
 }
