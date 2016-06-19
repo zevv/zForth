@@ -213,13 +213,6 @@ zf_cell zf_pickr(zf_addr n)
  * All access to dictionary memory is done through these functions.
  */
 
-static void dict_put_byte(zf_addr addr, uint8_t v)
-{
-	CHECK(addr < ZF_DICT_SIZE, ZF_ABORT_OUTSIDE_MEM);
-	dict[addr] = v;
-}
-
-
 static uint8_t dict_get_byte(zf_addr addr)
 {
 	CHECK(addr < ZF_DICT_SIZE, ZF_ABORT_OUTSIDE_MEM);
@@ -250,7 +243,7 @@ static void dict_get_bytes(zf_addr addr, void *buf, size_t len)
  *
  *    integer   0 ..   127  0xxxxxxx
  *    integer 128 .. 16383  10xxxxxx xxxxxxxx
- *    else                  xxxxxxxx [IEEE float val]
+ *    else                  11111111 <raw copy of zf_cell>
  */
 
 #if ZF_ENABLE_TYPED_MEM_ACCESS
@@ -270,19 +263,21 @@ static zf_addr dict_put_cell_typed(zf_addr addr, zf_cell v, zf_mem_size size)
 	if(size == ZF_MEM_SIZE_VAR) {
 		if((v - vi) == 0) {
 			if(vi < 128) {
-				dict_put_byte(addr, vi);
+				uint8_t t = vi;
+				dict_put_bytes(addr, &t, sizeof(t));
 				trace(" ¹");
 				return 1;
 			}
 			if(vi < 16384) {
-				dict_put_byte(addr+0, (vi >> 8) | 0x80);
-				dict_put_byte(addr+1, vi);
+				uint8_t t[2] = { (vi >> 8) | 0x80, vi };
+				dict_put_bytes(addr, t, sizeof(t));
 				trace(" ²");
 				return 2;
 			}
 		}
 
-		dict_put_byte(addr, 0xff);
+		uint8_t t = 0xff;
+		dict_put_bytes(addr, &t, sizeof(t));
 		dict_put_bytes(addr+1, (uint8_t *)&v, sizeof(v));
 		trace(" ⁵");
 		return sizeof(v) + 1;
