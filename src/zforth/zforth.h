@@ -15,7 +15,7 @@ typedef enum {
 	ZF_ABORT_RSTACK_OVERRUN,
 	ZF_ABORT_NOT_A_WORD,
 	ZF_ABORT_COMPILE_ONLY_WORD,
-	ZF_ABORT_INVALID_SIZE,
+	ZF_ABORT_INVALID_SIZE
 } zf_result;
 
 typedef enum {
@@ -26,13 +26,13 @@ typedef enum {
 	ZF_MEM_SIZE_U32,
 	ZF_MEM_SIZE_S8,
 	ZF_MEM_SIZE_S16,
-	ZF_MEM_SIZE_S32,
+	ZF_MEM_SIZE_S32
 } zf_mem_size;
 
 typedef enum {
 	ZF_INPUT_INTERPRET,
 	ZF_INPUT_PASS_CHAR,
-	ZF_INPUT_PASS_WORD,
+	ZF_INPUT_PASS_WORD
 } zf_input_state;
 
 typedef enum {

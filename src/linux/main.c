@@ -43,9 +43,9 @@ zf_result do_eval(const char *src, int line, const char *buf)
 	}
 
 	if(msg) {
-		fprintf(stderr, "\e[31m");
+		fprintf(stderr, "\033[31m");
 		if(src) fprintf(stderr, "%s:%d: ", src, line);
-		fprintf(stderr, "%s\e[0m\n", msg);
+		fprintf(stderr, "%s\033[0m\n", msg);
 	}
 
 	return rv;
@@ -127,7 +127,7 @@ zf_input_state zf_host_sys(zf_syscall_id id, const char *input)
 
 		case ZF_SYSCALL_TELL: {
 			zf_cell len = zf_pop();
-			void *buf = zf_dump(NULL) + (int)zf_pop();
+			void *buf = (uint8_t *)zf_dump(NULL) + (int)zf_pop();
 			(void)fwrite(buf, 1, len, stdout);
 			fflush(stdout); }
 			break;
@@ -170,9 +170,9 @@ zf_input_state zf_host_sys(zf_syscall_id id, const char *input)
 
 void zf_host_trace(const char *fmt, va_list va)
 {
-	fprintf(stderr, "\e[1;30m");
+	fprintf(stderr, "\033[1;30m");
 	vfprintf(stderr, fmt, va);
-	fprintf(stderr, "\e[0m");
+	fprintf(stderr, "\033[0m");
 }
 
 
@@ -210,6 +210,7 @@ void usage(void)
 
 int main(int argc, char **argv)
 {
+	int i;
 	int c;
 	int trace = 0;
 	const char *fname_load = NULL;
@@ -251,7 +252,6 @@ int main(int argc, char **argv)
 
 	/* Include files from command line */
 
-	int i;
 	for(i=0; i<argc; i++) {
 		include(argv[i]);
 	}

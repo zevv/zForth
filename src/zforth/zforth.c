@@ -119,13 +119,14 @@ static const char *op_name(zf_addr addr)
 	static char name[32];
 
 	while(TRACE && w) {
-		zf_addr p = w;
+		zf_addr xt, p = w;
 		zf_cell d, link, op2;
+		int lenflags;
 
 		p += dict_get_cell(p, &d);
-		int lenflags = d;
+		lenflags = d;
 		p += dict_get_cell(p, &link);
-		zf_addr xt = p + ZF_FLAG_LEN(lenflags);
+		xt = p + ZF_FLAG_LEN(lenflags);
 		dict_get_cell(xt, &op2);
 
 		if(((lenflags & ZF_FLAG_PRIM) && addr == (zf_addr)op2) || addr == w || addr == xt) {
@@ -171,8 +172,9 @@ void zf_push(zf_cell v)
 
 zf_cell zf_pop(void)
 {
+	zf_cell v;
 	CHECK(dsp > 0, ZF_ABORT_DSTACK_UNDERRUN);
-	zf_cell v = dstack[--dsp];
+	v = dstack[--dsp];
 	trace("«" ZF_CELL_FMT " ", v);
 	return v;
 }
@@ -195,8 +197,9 @@ static void zf_pushr(zf_cell v)
 
 static zf_cell zf_popr(void)
 {
+	zf_cell v;
 	CHECK(rsp > 0, ZF_ABORT_RSTACK_UNDERRUN);
-	zf_cell v = rstack[--rsp];
+	v = rstack[--rsp];
 	trace("r«" ZF_CELL_FMT " ", v);
 	return v;
 }
@@ -215,9 +218,9 @@ zf_cell zf_pickr(zf_addr n)
 
 static zf_addr dict_put_bytes(zf_addr addr, const void *buf, size_t len)
 {
-	CHECK(addr < ZF_DICT_SIZE-len, ZF_ABORT_OUTSIDE_MEM);
 	const uint8_t *p = buf;
 	size_t i = len;
+	CHECK(addr < ZF_DICT_SIZE-len, ZF_ABORT_OUTSIDE_MEM);
 	while(i--) dict[addr++] = *p++;
 	return len;
 }
@@ -225,8 +228,8 @@ static zf_addr dict_put_bytes(zf_addr addr, const void *buf, size_t len)
 
 static void dict_get_bytes(zf_addr addr, void *buf, size_t len)
 {
-	CHECK(addr < ZF_DICT_SIZE-len, ZF_ABORT_OUTSIDE_MEM);
 	uint8_t *p = buf;
+	CHECK(addr < ZF_DICT_SIZE-len, ZF_ABORT_OUTSIDE_MEM);
 	while(len--) *p++ = dict[addr++];
 }
 
@@ -252,6 +255,7 @@ static void dict_get_bytes(zf_addr addr, void *buf, size_t len)
 static zf_addr dict_put_cell_typed(zf_addr addr, zf_cell v, zf_mem_size size)
 {
 	unsigned int vi = v;
+	uint8_t t[2];
 
 	trace("\n+" ZF_ADDR_FMT " " ZF_ADDR_FMT, addr, (zf_addr)v);
 
@@ -259,19 +263,20 @@ static zf_addr dict_put_cell_typed(zf_addr addr, zf_cell v, zf_mem_size size)
 		if((v - vi) == 0) {
 			if(vi < 128) {
 				trace(" ¹");
-				uint8_t t = vi;
-				return dict_put_bytes(addr, &t, sizeof(t));
+				t[0] = vi;
+				return dict_put_bytes(addr, t, 1);
 			}
 			if(vi < 16384) {
 				trace(" ²");
-				uint8_t t[2] = { (vi >> 8) | 0x80, vi };
+				t[0] = (vi >> 8) | 0x80;
+				t[1] = vi;
 				return dict_put_bytes(addr, t, sizeof(t));
 			}
 		}
 
 		trace(" ⁵");
-		uint8_t t = 0xff;
-		return dict_put_bytes(addr+0, &t, sizeof(t)) + 
+		t[0] = 0xff;
+		return dict_put_bytes(addr+0, t, 1) + 
 		       dict_put_bytes(addr+1, &v, sizeof(v));
 	} 
 	
@@ -371,8 +376,9 @@ static void dict_add_lit(zf_cell v)
 
 static void dict_add_str(const char *s)
 {
+	size_t l;
 	trace("\n+" ZF_ADDR_FMT " " ZF_ADDR_FMT " s '%s'", HERE, 0, s);
-	size_t l = strlen(s);
+	l = strlen(s);
 	HERE += dict_put_bytes(HERE, s, l);
 }
 
@@ -383,8 +389,9 @@ static void dict_add_str(const char *s)
 
 static void create(const char *name, int flags)
 {
+	zf_addr here_prev;
 	trace("\n=== create '%s'", name);
-	zf_addr here_prev = HERE;
+	here_prev = HERE;
 	dict_add_cell((strlen(name)) | flags);
 	dict_add_cell(LATEST);
 	dict_add_str(name);
@@ -405,9 +412,10 @@ static int find_word(const char *name, zf_addr *word, zf_addr *code)
 	while(w) {
 		zf_cell link, d;
 		zf_addr p = w;
+		size_t len;
 		p += dict_get_cell(p, &d);
 		p += dict_get_cell(p, &link);
-		size_t len = ZF_FLAG_LEN((int)d);
+		len = ZF_FLAG_LEN((int)d);
 		if(len == namelen) {
 			const char *name2 = (void *)&dict[p];
 			if(memcmp(name, name2, len) == 0) {
@@ -446,13 +454,13 @@ static void run(const char *input)
 		zf_cell d;
 		zf_addr l = dict_get_cell(ip, &d);
 		zf_addr code = d;
+		zf_addr i, ip_org;
 
 		trace("\n "ZF_ADDR_FMT " " ZF_ADDR_FMT " ", ip, code);
 
-		zf_addr i;
 		for(i=0; i<rsp; i++) trace("┊  ");
 
-		zf_addr ip_org = ip;
+		ip_org = ip;
 		ip += l;
 
 		if(code <= PRIM_COUNT) {
@@ -713,6 +721,9 @@ static void do_prim(zf_prim op, const char *input)
 
 static void handle_word(const char *buf)
 {
+	zf_addr w, c = 0;
+	int found;
+
 	/* If a word was requested by an earlier operation, resume with the new
 	 * word */
 
@@ -724,16 +735,16 @@ static void handle_word(const char *buf)
 
 	/* Look up the word in the dictionary */
 
-	zf_addr w, c = 0;
-	int found = find_word(buf, &w, &c);
+	found = find_word(buf, &w, &c);
 
 	if(found) {
 
 		/* Word found: compile or execute, depending on flags and state */
 
 		zf_cell d;
+		int flags;
 		dict_get_cell(w, &d);
-		int flags = d;
+		flags = d;
 
 		if(COMPILING && (POSTPONE || !(flags & ZF_FLAG_IMMEDIATE))) {
 			if(flags & ZF_FLAG_PRIM) {
