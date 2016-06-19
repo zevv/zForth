@@ -84,7 +84,7 @@ static jmp_buf jmpbuf;
 #define USERVAR_COUNT 5
 
 static const char uservar_names[] =
-	_("here")   _("latest") _("trace")  _("compiling")  _("_postpone");
+	_("h")   _("latest") _("trace")  _("compiling")  _("_postpone");
 
 static zf_addr *uservar = (zf_addr *)dict;
 

@@ -17,8 +17,8 @@ Some of zForth's highlights:
   then larger, resulting in 30% to 50% space saving
 
 - **Portable**: zForth is written in 100% ANSI C, and runs on virtually all
-  architectures. Tested on x86, x86_64, ARM, ARM thumb, MIPS, Atmel AVR and the
-  8051.
+  operating systems and all architectures. Tested on x86 Linux/Win32/MS-DOS
+  (Turbo-C 1.0!), x86_64, ARM, ARM thumb, MIPS, Atmel AVR and the 8051.
 
 - **Small footprint**: the kernel C code compiles to about 3 or 4 kB of machine
   code, depending on the architecture and chosen cell data types.

@@ -39,18 +39,19 @@
 : !=   = not ;
 : cr   10 emit ;
 : ..   dup . ;
+: here h @ ;
 
 
 ( memory management )
 
-: allot  here +!  ;
-: var : postpone [ ' lit , here @ dup 5 + , ' exit , here @ swap ! 5 allot ;
+: allot  h +!  ;
+: var : postpone [ ' lit , here dup 5 + , ' exit , here swap ! 5 allot ;
 
 
 ( 'begin' gets the current address, a jump or conditional jump back is generated
   by 'again', 'until' or 'times' )
 
-: begin   here @ ; immediate
+: begin   here ; immediate
 : again   ' jmp , , ; immediate
 : until   ' jmp0 , , ; immediate
 : times ' 1 - , ' dup , ' =0 , postpone until ; immediate
@@ -58,25 +59,25 @@
 
 ( 'if' prepares conditional jump, address will be filled in by 'else' or 'fi' )
 
-: if      ' jmp0 , here @ 999 , ; immediate
+: if      ' jmp0 , here 999 , ; immediate
 : unless  ' not , postpone if ; immediate
-: else    ' jmp , here @ 999 , swap here @ swap ! ; immediate
-: fi      here @ swap ! ; immediate
+: else    ' jmp , here 999 , swap here swap ! ; immediate
+: fi      here swap ! ; immediate
 
 
 ( forth style 'do' and 'loop', including loop iterators 'i' and 'j' )
 
 : i ' lit , 0 , ' pickr , ; immediate
 : j ' lit , 3 , ' pickr , ; immediate
-: do ' swap , ' >r , ' >r , here @ ; immediate
+: do ' swap , ' >r , ' >r , here ; immediate
 : loop+ ' r> , ' + , ' dup , ' >r , ' lit , 1 , ' pickr , ' > , ' jmp0 , , ' r> , ' drop , ' r> , ' drop , ; immediate
 : loop ' lit , 1 , postpone loop+ ;  immediate
 
 
 ( Create string literal, puts length and address on the stack )
 
-: s" compiling @ if ' lits , here @ 0 , fi here @ begin key dup 34 = if drop
-     compiling @ if here @ swap - swap ! else dup here @ swap - fi exit else , fi
+: s" compiling @ if ' lits , here 0 , fi here begin key dup 34 = if drop
+     compiling @ if here swap - swap ! else dup here swap - fi exit else , fi
      again ; immediate
 
 ( Print string literal )
@@ -85,7 +86,7 @@
      fi ; immediate
 
 
-." Welcome to zForth, " here @ . ." bytes used" cr ;
+." Welcome to zForth, " here . ." bytes used" cr ;
 
 
 (

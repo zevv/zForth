@@ -10,7 +10,7 @@
 ( Below are some tests for memory access with various sizes and types )
 
 : assert != if . 10 cr fi ;
-: pos here @ ;
+: pos here ;
 
 0.1 dup pos !c pos @c assert
 -1 dup pos !c pos @c assert
@@ -26,10 +26,10 @@
 -2147483648 dup pos !s32 pos @s32 assert
 2147483520 dup pos !s32 pos @s32 assert
 
-here @
-here @ 0.1 dup ,c swap @c assert
-here @ -128 dup ,s8 swap @s8 assert
-here @ -128 dup ,s32 swap @s32 assert
+here
+here 0.1 dup ,c swap @c assert
+here -128 dup ,s8 swap @s8 assert
+here -128 dup ,s32 swap @s32 assert
 here !
 
 ( End )
