@@ -92,7 +92,7 @@ static zf_addr *uservar = (zf_addr *)dict;
 /* Prototypes */
 
 static void do_prim(zf_prim prim, const char *input);
-static zf_addr dict_get_cell(zf_addr addr, zf_cell *v, zf_mem_size size);
+static zf_addr dict_get_cell(zf_addr addr, zf_cell *v);
 static void dict_get_bytes(zf_addr addr, void *buf, size_t len);
 
 
@@ -122,11 +122,11 @@ static const char *op_name(zf_addr addr)
 		zf_addr p = w;
 		zf_cell d, link, op2;
 
-		p += dict_get_cell(p, &d, ZF_MEM_SIZE_VAR);
+		p += dict_get_cell(p, &d);
 		int lenflags = d;
-		p += dict_get_cell(p, &link, ZF_MEM_SIZE_VAR);
+		p += dict_get_cell(p, &link);
 		zf_addr xt = p + ZF_FLAG_LEN(lenflags);
-		dict_get_cell(xt, &op2, ZF_MEM_SIZE_VAR);
+		dict_get_cell(xt, &op2);
 
 		if(((lenflags & ZF_FLAG_PRIM) && addr == (zf_addr)op2) || addr == w || addr == xt) {
 			int l = ZF_FLAG_LEN(lenflags);
@@ -261,7 +261,7 @@ static void dict_get_bytes(zf_addr addr, void *buf, size_t len)
 #define PUT(s, t, val)
 #endif
 
-static zf_addr dict_put_cell(zf_addr addr, zf_cell v, zf_mem_size size)
+static zf_addr dict_put_cell_typed(zf_addr addr, zf_cell v, zf_mem_size size)
 {
 	unsigned int vi = v;
 
@@ -301,7 +301,7 @@ static zf_addr dict_put_cell(zf_addr addr, zf_cell v, zf_mem_size size)
 }
 
 
-static zf_addr dict_get_cell(zf_addr addr, zf_cell *v, zf_mem_size size)
+static zf_addr dict_get_cell_typed(zf_addr addr, zf_cell *v, zf_mem_size size)
 {
 	uint8_t v8 = dict_get_byte(addr);
 
@@ -333,12 +333,32 @@ static zf_addr dict_get_cell(zf_addr addr, zf_cell *v, zf_mem_size size)
 }
 
 
-static void dict_add_cell(zf_cell v, zf_mem_size size)
+static void dict_add_cell_typed(zf_cell v, zf_mem_size size)
 {
-	HERE += dict_put_cell(HERE, v, size);
+	HERE += dict_put_cell_typed(HERE, v, size);
 	trace(" ");
 }
 
+/*
+ * Shortcut functions for cell access with variable cell size
+ */
+
+static zf_addr dict_put_cell(zf_addr addr, zf_cell v)
+{
+	return dict_put_cell_typed(addr, v, ZF_MEM_SIZE_VAR);
+}
+
+
+static zf_addr dict_get_cell(zf_addr addr, zf_cell *v)
+{
+	return dict_get_cell_typed(addr, v, ZF_MEM_SIZE_VAR);
+}
+
+
+static void dict_add_cell(zf_cell v)
+{
+	dict_add_cell_typed(v, ZF_MEM_SIZE_VAR);
+}
 
 
 /*
@@ -347,7 +367,7 @@ static void dict_add_cell(zf_cell v, zf_mem_size size)
 
 static void dict_add_op(zf_addr op)
 {
-	dict_add_cell(op, ZF_MEM_SIZE_VAR);
+	dict_add_cell(op);
 	trace("+%s ", op_name(op));
 }
 
@@ -355,7 +375,7 @@ static void dict_add_op(zf_addr op)
 static void dict_add_lit(zf_cell v)
 {
 	dict_add_op(PRIM_LIT);
-	dict_add_cell(v, ZF_MEM_SIZE_VAR);
+	dict_add_cell(v);
 }
 
 
@@ -376,8 +396,8 @@ static void create(const char *name, int flags)
 {
 	trace("\n=== create '%s'", name);
 	zf_addr here_prev = HERE;
-	dict_add_cell((strlen(name)) | flags, ZF_MEM_SIZE_VAR);
-	dict_add_cell(LATEST, ZF_MEM_SIZE_VAR);
+	dict_add_cell((strlen(name)) | flags);
+	dict_add_cell(LATEST);
 	dict_add_str(name);
 	LATEST = here_prev;
 	trace("\n===");
@@ -396,9 +416,9 @@ static int find_word(const char *name, zf_addr *word, zf_addr *code)
 	while(w) {
 		zf_cell link, d;
 		zf_addr p = w;
-		p += dict_get_cell(p, &d, ZF_MEM_SIZE_VAR);
+		p += dict_get_cell(p, &d);
+		p += dict_get_cell(p, &link);
 		size_t len = ZF_FLAG_LEN((int)d);
-		p += dict_get_cell(p, &link, ZF_MEM_SIZE_VAR);
 		if(len == namelen) {
 			const char *name2 = (void *)&dict[p];
 			if(memcmp(name, name2, len) == 0) {
@@ -421,8 +441,8 @@ static int find_word(const char *name, zf_addr *word, zf_addr *code)
 static void make_immediate(void)
 {
 	zf_cell lenflags;
-	dict_get_cell(LATEST, &lenflags, ZF_MEM_SIZE_VAR);
-	dict_put_cell(LATEST, (int)lenflags | ZF_FLAG_IMMEDIATE, ZF_MEM_SIZE_VAR);
+	dict_get_cell(LATEST, &lenflags);
+	dict_put_cell(LATEST, (int)lenflags | ZF_FLAG_IMMEDIATE);
 }
 
 
@@ -435,7 +455,7 @@ static void run(const char *input)
 
 	do {
 		zf_cell d;
-		zf_addr l = dict_get_cell(ip, &d, ZF_MEM_SIZE_VAR);
+		zf_addr l = dict_get_cell(ip, &d);
 		zf_addr code = d;
 
 		trace("\n "ZF_ADDR_FMT " " ZF_ADDR_FMT " ", ip, code);
@@ -485,7 +505,7 @@ static zf_addr peek(zf_addr addr, zf_cell *val, int len)
 		*val = uservar[addr];
 		return 1;
 	} else {
-		return dict_get_cell(addr, val, len);
+		return dict_get_cell_typed(addr, val, len);
 	}
 
 }
@@ -524,7 +544,7 @@ static void do_prim(zf_prim op, const char *input)
 			break;
 
 		case PRIM_LIT:
-			ip += dict_get_cell(ip, &d1, ZF_MEM_SIZE_VAR);
+			ip += dict_get_cell(ip, &d1);
 			zf_push(d1);
 			break;
 
@@ -553,7 +573,7 @@ static void do_prim(zf_prim op, const char *input)
 				uservar[addr] = d1;
 				break;
 			}
-			dict_put_cell(addr, d1, d2);
+			dict_put_cell_typed(addr, d1, d2);
 			break;
 
 		case PRIM_SWAP:
@@ -624,13 +644,13 @@ static void do_prim(zf_prim op, const char *input)
 			break;
 
 		case PRIM_JMP:
-			ip += dict_get_cell(ip, &d1, ZF_MEM_SIZE_VAR);
+			ip += dict_get_cell(ip, &d1);
 			trace("ip " ZF_ADDR_FMT "=>" ZF_ADDR_FMT, ip, (zf_addr)d1);
 			ip = d1;
 			break;
 
 		case PRIM_JMP0:
-			ip += dict_get_cell(ip, &d1, ZF_MEM_SIZE_VAR);
+			ip += dict_get_cell(ip, &d1);
 			if(zf_pop() == 0) {
 				trace("ip " ZF_ADDR_FMT "=>" ZF_ADDR_FMT, ip, (zf_addr)d1);
 				ip = d1;
@@ -638,7 +658,7 @@ static void do_prim(zf_prim op, const char *input)
 			break;
 
 		case PRIM_TICK:
-			ip += dict_get_cell(ip, &d1, ZF_MEM_SIZE_VAR);
+			ip += dict_get_cell(ip, &d1);
 			trace("%s/", op_name(d1));
 			zf_push(d1);
 			break;
@@ -646,7 +666,7 @@ static void do_prim(zf_prim op, const char *input)
 		case PRIM_COMMA:
 			d2 = zf_pop();
 			d1 = zf_pop();
-			dict_add_cell(d1, d2);
+			dict_add_cell_typed(d1, d2);
 			break;
 
 		case PRIM_COMMENT:
@@ -676,7 +696,7 @@ static void do_prim(zf_prim op, const char *input)
 			break;
 
 		case PRIM_LITS:
-			ip += dict_get_cell(ip, &d1, ZF_MEM_SIZE_VAR);
+			ip += dict_get_cell(ip, &d1);
 			zf_push(ip);
 			zf_push(d1);
 			ip += d1;
@@ -719,12 +739,12 @@ static void handle_word(const char *buf)
 		/* Word found: compile or execute, depending on flags and state */
 
 		zf_cell d;
-		dict_get_cell(w, &d, ZF_MEM_SIZE_VAR);
+		dict_get_cell(w, &d);
 		int flags = d;
 
 		if(COMPILING && (POSTPONE || !(flags & ZF_FLAG_IMMEDIATE))) {
 			if(flags & ZF_FLAG_PRIM) {
-				dict_get_cell(c, &d, ZF_MEM_SIZE_VAR);
+				dict_get_cell(c, &d);
 				dict_add_op(d);
 			} else {
 				dict_add_op(c);

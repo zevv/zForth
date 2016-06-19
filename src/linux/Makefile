@@ -23,7 +23,7 @@ clean:
 	rm -f $(BIN) $(OBJS) $(DEPS)
 
 lint:
-	lint -i /opt/flint/supp/lnt -i src -w2 co-gcc.lnt \
+	lint -i /opt/flint/supp/lnt -i ..\\zforth -i src -w2 co-gcc.lnt \
 		-e537 -e451 -e524 -e534 -e641 -e661 -e64 \
 		$(SRC)
 
