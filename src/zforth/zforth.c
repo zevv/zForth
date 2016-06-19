@@ -28,7 +28,9 @@
 
 /* Define all primitives, make sure the two tables below always match.  The
  * names are defined as a \0 separated list, terminated by double \0. This
- * saves space on the pointers compared to an array of strings */
+ * saves space on the pointers compared to an array of strings. Immediates are
+ * prefixed by an underscore, which is later stripped of when putting the name
+ * in the dictionary. */
 
 #define _(s) s "\0"
 
@@ -43,7 +45,7 @@ typedef enum {
 	PRIM_COUNT
 } zf_prim;
 
-const char prim_names[] =
+static const char prim_names[] =
 	_("exit")    _("lit")        _("<0")    _(":")     _("_;")        _("+")
 	_("-")       _("*")          _("/")     _("%")     _("drop")      _("dup")
 	_("pickr")   _("_immediate") _("@@")    _("!!")    _("swap")      _("rot")
@@ -81,7 +83,7 @@ static jmp_buf jmpbuf;
 #define POSTPONE  uservar[4]    /* flag to indicate next imm word should be compiled */
 #define USERVAR_COUNT 5
 
-const char uservar_names[] =
+static const char uservar_names[] =
 	_("here")   _("latest") _("trace")  _("compiling")  _("_postpone");
 
 static zf_addr *uservar = (zf_addr *)dict;
