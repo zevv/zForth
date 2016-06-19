@@ -51,7 +51,7 @@ static const char prim_names[] =
 	_("pickr")   _("_immediate") _("@@")    _("!!")    _("swap")      _("rot")
 	_("jmp")     _("jmp0")       _("'")     _("_(")    _(">r")        _("r>")
 	_("=")       _("sys")        _("pick")  _(",,")    _("key")       _("lits")
-	_("#")       _("&");
+	_("##")      _("&");
 
 
 /* Stacks and dictionary memory */
