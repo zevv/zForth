@@ -213,11 +213,13 @@ zf_cell zf_pickr(zf_addr n)
  * All access to dictionary memory is done through these functions.
  */
 
-static void dict_put_bytes(zf_addr addr, const void *buf, size_t len)
+static zf_addr dict_put_bytes(zf_addr addr, const void *buf, size_t len)
 {
 	CHECK(addr < ZF_DICT_SIZE-len, ZF_ABORT_OUTSIDE_MEM);
 	const uint8_t *p = buf;
-	while(len--) dict[addr++] = *p++;
+	size_t i = len;
+	while(i--) dict[addr++] = *p++;
+	return len;
 }
 
 
@@ -241,7 +243,7 @@ static void dict_get_bytes(zf_addr addr, void *buf, size_t len)
 
 #if ZF_ENABLE_TYPED_MEM_ACCESS
 #define GET(s, t) if(size == s) { t v ## t; dict_get_bytes(addr, &v ## t, sizeof(t)); *v = v ## t; return sizeof(t); };
-#define PUT(s, t, val) if(size == s) { t v ## t = val; dict_put_bytes(addr, &v ## t, sizeof(t)); return sizeof(t); }
+#define PUT(s, t, val) if(size == s) { t v ## t = val; return dict_put_bytes(addr, &v ## t, sizeof(t)); }
 #else
 #define GET(s, t)
 #define PUT(s, t, val)
@@ -256,24 +258,21 @@ static zf_addr dict_put_cell_typed(zf_addr addr, zf_cell v, zf_mem_size size)
 	if(size == ZF_MEM_SIZE_VAR) {
 		if((v - vi) == 0) {
 			if(vi < 128) {
-				uint8_t t = vi;
-				dict_put_bytes(addr, &t, sizeof(t));
 				trace(" ¹");
-				return 1;
+				uint8_t t = vi;
+				return dict_put_bytes(addr, &t, sizeof(t));
 			}
 			if(vi < 16384) {
-				uint8_t t[2] = { (vi >> 8) | 0x80, vi };
-				dict_put_bytes(addr, t, sizeof(t));
 				trace(" ²");
-				return 2;
+				uint8_t t[2] = { (vi >> 8) | 0x80, vi };
+				return dict_put_bytes(addr, t, sizeof(t));
 			}
 		}
 
-		uint8_t t = 0xff;
-		dict_put_bytes(addr, &t, sizeof(t));
-		dict_put_bytes(addr+1, (uint8_t *)&v, sizeof(v));
 		trace(" ⁵");
-		return sizeof(v) + 1;
+		uint8_t t = 0xff;
+		return dict_put_bytes(addr+0, &t, sizeof(t)) + 
+		       dict_put_bytes(addr+1, &v, sizeof(v));
 	} 
 	
 	PUT(ZF_MEM_SIZE_CELL, zf_cell, v);
@@ -322,12 +321,6 @@ static zf_addr dict_get_cell_typed(zf_addr addr, zf_cell *v, zf_mem_size size)
 }
 
 
-static void dict_add_cell_typed(zf_cell v, zf_mem_size size)
-{
-	HERE += dict_put_cell_typed(HERE, v, size);
-	trace(" ");
-}
-
 /*
  * Shortcut functions for cell access with variable cell size
  */
@@ -344,15 +337,23 @@ static zf_addr dict_get_cell(zf_addr addr, zf_cell *v)
 }
 
 
+/*
+ * Generic dictionary adding, these functions all add at the HERE pointer and
+ * increase the pointer
+ */
+
+static void dict_add_cell_typed(zf_cell v, zf_mem_size size)
+{
+	HERE += dict_put_cell_typed(HERE, v, size);
+	trace(" ");
+}
+
+
 static void dict_add_cell(zf_cell v)
 {
 	dict_add_cell_typed(v, ZF_MEM_SIZE_VAR);
 }
 
-
-/*
- * Generic dictionary adding
- */
 
 static void dict_add_op(zf_addr op)
 {
@@ -372,8 +373,7 @@ static void dict_add_str(const char *s)
 {
 	trace("\n+" ZF_ADDR_FMT " " ZF_ADDR_FMT " s '%s'", HERE, 0, s);
 	size_t l = strlen(s);
-	dict_put_bytes(HERE, s, l);
-	HERE += l;
+	HERE += dict_put_bytes(HERE, s, l);
 }
 
 
@@ -452,13 +452,17 @@ static void run(const char *input)
 		zf_addr i;
 		for(i=0; i<rsp; i++) trace("┊  ");
 
+		zf_addr ip_org = ip;
 		ip += l;
 
 		if(code <= PRIM_COUNT) {
 			do_prim(code, input);
-			if(input_state != ZF_INPUT_INTERPRET) {
-				ip -= l;
-			}
+
+			/* If the prim requests data, restore IP so that the next time around we
+			 * call the same prim again */
+
+			if(input_state != ZF_INPUT_INTERPRET) 
+				ip = ip_org;
 
 		} else {
 			trace("%s/" ZF_ADDR_FMT " ", op_name(code), code);
