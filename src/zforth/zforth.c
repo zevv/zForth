@@ -213,13 +213,6 @@ zf_cell zf_pickr(zf_addr n)
  * All access to dictionary memory is done through these functions.
  */
 
-static uint8_t dict_get_byte(zf_addr addr)
-{
-	CHECK(addr < ZF_DICT_SIZE, ZF_ABORT_OUTSIDE_MEM);
-	return dict[addr];
-}
-
-
 static void dict_put_bytes(zf_addr addr, const void *buf, size_t len)
 {
 	CHECK(addr < ZF_DICT_SIZE-len, ZF_ABORT_OUTSIDE_MEM);
@@ -298,19 +291,20 @@ static zf_addr dict_put_cell_typed(zf_addr addr, zf_cell v, zf_mem_size size)
 
 static zf_addr dict_get_cell_typed(zf_addr addr, zf_cell *v, zf_mem_size size)
 {
-	uint8_t v8 = dict_get_byte(addr);
+	uint8_t t[2];
+	dict_get_bytes(addr, t, sizeof(t));
 
 	if(size == ZF_MEM_SIZE_VAR) {
-		if(v8 & 0x80) {
-			if(v8 == 0xff) {
+		if(t[0] & 0x80) {
+			if(t[0] == 0xff) {
 				dict_get_bytes(addr+1, v, sizeof(*v));
 				return 1 + sizeof(*v);
 			} else {
-				*v = ((v8 & 0x3f) << 8) + dict_get_byte(addr+1);
+				*v = ((t[0] & 0x3f) << 8) + t[1];
 				return 2;
 			}
 		} else {
-			*v = dict_get_byte(addr);
+			*v = t[0];
 			return 1;
 		}
 	} 
