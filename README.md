@@ -4,11 +4,29 @@
 zForth
 ======
 
+
+From Wikipedia:
+
+   "A Forth environment combines the compiler with an interactive shell, where
+   the user defines and runs subroutines called words. Words can be tested,
+   redefined, and debugged as the source is entered without recompiling or
+   restarting the whole program. All syntactic elements, including variables
+   and basic operators are defined as words. Forth environments vary in how the
+   resulting program is stored, but ideally running the program has the same
+   effect as manually re-entering the source."
+
 zForth is yet another Forth, but with some special features not found in most
-other forths. zForth was written as a lightweight scripting language for
-extending embedded applications on small microprocessors. It's not particularly
-fast, but should be easy to integrate on any platform with a few kb's of ROM
-and RAM.
+other forths. Note that zForth was written for engineers, not for language
+purists or Forth aficionados. Its main intention is to be a lightweight
+scripting language for extending embedded applications on small
+microprocessors. It is not particularly fast, but should be easy to integrate
+on any platform with a few kB's of ROM and RAM.
+
+For a lot of programmers Forth seems to belong to the domain of alien
+languages: it does not look like any mainstream language most people encounter,
+and is built on a number of philosophies that takes some time to get used to.
+Still, it is one of the more efficient ways of bringing a interpreter and
+compiler to a platform with restricted resources.
 
 Some of zForth's highlights:
 
