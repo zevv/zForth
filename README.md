@@ -34,7 +34,7 @@ Some of zForth's highlights:
 - **Flexible data types**: at compile time the user is free to choose what C data
   type should be used for the dictionary and the stacks. zForth supports signed
   integer sizes from 16 to 128 bit, but also works seamlessly with floating point
-  types like float and double.
+  types like float and double (or even the C99 'complex' type!)
 
 - **Ease interfacing**: calling C code from forth is easy through a host system
   call primitive, and code has access to the stack for exchanging data between
