@@ -108,7 +108,7 @@ Print the sine of 10 numbers between 0 and PI
 
 ````
 : pi 3.141592654 ;
-: demo 0 begin dup sin . pi 10 / + dup 10 > until ;
+: demo pi 0 do i sin . pi 10 / loop+ ;
 demo
 ````
 
