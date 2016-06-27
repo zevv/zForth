@@ -449,28 +449,27 @@ static void make_immediate(void)
 
 static void run(const char *input)
 {
-
-	do {
+	while(ip != 0) {
 		zf_cell d;
+		zf_addr i, ip_org = ip;
 		zf_addr l = dict_get_cell(ip, &d);
 		zf_addr code = d;
-		zf_addr i, ip_org;
 
 		trace("\n "ZF_ADDR_FMT " " ZF_ADDR_FMT " ", ip, code);
-
 		for(i=0; i<rsp; i++) trace("┊  ");
-
-		ip_org = ip;
+		
 		ip += l;
 
 		if(code <= PRIM_COUNT) {
 			do_prim(code, input);
 
-			/* If the prim requests data, restore IP so that the next time around we
-			 * call the same prim again */
+			/* If the prim requests input, restore IP so that the
+			 * next time around we call the same prim again */
 
-			if(input_state != ZF_INPUT_INTERPRET) 
+			if(input_state != ZF_INPUT_INTERPRET) {
 				ip = ip_org;
+				break;
+			}
 
 		} else {
 			trace("%s/" ZF_ADDR_FMT " ", op_name(code), code);
@@ -479,8 +478,7 @@ static void run(const char *input)
 		}
 
 		input = NULL;
-
-	} while(input_state == ZF_INPUT_INTERPRET && ip != 0);
+	} 
 }
 
 
