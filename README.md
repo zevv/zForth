@@ -7,13 +7,13 @@ zForth
 
 From Wikipedia:
 
-   "A Forth environment combines the compiler with an interactive shell, where
+   _A Forth environment combines the compiler with an interactive shell, where
    the user defines and runs subroutines called words. Words can be tested,
    redefined, and debugged as the source is entered without recompiling or
    restarting the whole program. All syntactic elements, including variables
    and basic operators are defined as words. Forth environments vary in how the
    resulting program is stored, but ideally running the program has the same
-   effect as manually re-entering the source."
+   effect as manually re-entering the source._
 
 zForth is yet another Forth, but with some special features not found in most
 other forths. Note that zForth was written for engineers, not for language
