@@ -218,7 +218,7 @@ zf_cell zf_pickr(zf_addr n)
 
 static zf_addr dict_put_bytes(zf_addr addr, const void *buf, size_t len)
 {
-	const uint8_t *p = buf;
+	const uint8_t *p = (const uint8_t *)buf;
 	size_t i = len;
 	CHECK(addr < ZF_DICT_SIZE-len, ZF_ABORT_OUTSIDE_MEM);
 	while(i--) dict[addr++] = *p++;
@@ -228,7 +228,7 @@ static zf_addr dict_put_bytes(zf_addr addr, const void *buf, size_t len)
 
 static void dict_get_bytes(zf_addr addr, void *buf, size_t len)
 {
-	uint8_t *p = buf;
+	uint8_t *p = (uint8_t *)buf;
 	CHECK(addr < ZF_DICT_SIZE-len, ZF_ABORT_OUTSIDE_MEM);
 	while(len--) *p++ = dict[addr++];
 }
@@ -417,7 +417,7 @@ static int find_word(const char *name, zf_addr *word, zf_addr *code)
 		p += dict_get_cell(p, &link);
 		len = ZF_FLAG_LEN((int)d);
 		if(len == namelen) {
-			const char *name2 = (void *)&dict[p];
+			const char *name2 = (const char *)&dict[p];
 			if(memcmp(name, name2, len) == 0) {
 				*word = w;
 				*code = p + len;
@@ -461,7 +461,7 @@ static void run(const char *input)
 		ip += l;
 
 		if(code <= PRIM_COUNT) {
-			do_prim(code, input);
+			do_prim((zf_prim)code, input);
 
 			/* If the prim requests input, restore IP so that the
 			 * next time around we call the same prim again */
@@ -504,7 +504,7 @@ static zf_addr peek(zf_addr addr, zf_cell *val, int len)
 		*val = uservar[addr];
 		return 1;
 	} else {
-		return dict_get_cell_typed(addr, val, len);
+		return dict_get_cell_typed(addr, val, (zf_mem_size)len);
 	}
 
 }
@@ -572,7 +572,7 @@ static void do_prim(zf_prim op, const char *input)
 				uservar[addr] = d1;
 				break;
 			}
-			dict_put_cell_typed(addr, d1, d2);
+			dict_put_cell_typed(addr, d1, (zf_mem_size)d2);
 			break;
 
 		case PRIM_SWAP:
@@ -665,7 +665,7 @@ static void do_prim(zf_prim op, const char *input)
 		case PRIM_COMMA:
 			d2 = zf_pop();
 			d1 = zf_pop();
-			dict_add_cell_typed(d1, d2);
+			dict_add_cell_typed(d1, (zf_mem_size)d2);
 			break;
 
 		case PRIM_COMMENT:
@@ -856,7 +856,7 @@ void zf_bootstrap(void)
 	zf_addr i = 0;
 	const char *p;
 	for(p=prim_names; *p; p+=strlen(p)+1) {
-		add_prim(p, i++);
+		add_prim(p, (zf_prim)i++);
 	} 
 
 	i = 0;
@@ -876,7 +876,7 @@ void zf_bootstrap(void) {}
 
 zf_result zf_eval(const char *buf)
 {
-	zf_result r = setjmp(jmpbuf);
+	zf_result r = (zf_result)setjmp(jmpbuf);
 
 	if(r == ZF_OK) {
 		for(;;) {
