@@ -10,8 +10,10 @@
 #include <getopt.h>
 #include <math.h>
 
+#ifdef USE_READLINE
 #include <readline/readline.h>
 #include <readline/history.h>
+#endif
 
 #include "zforth.h"
 
@@ -259,7 +261,9 @@ int main(int argc, char **argv)
 
 	/* Interactive interpreter: read a line using readline library,
 	 * and pass to zf_eval() for evaluation*/
-	
+
+#ifdef USE_READLINE
+
 	read_history(".zforth.hist");
 
 	for(;;) {
@@ -278,6 +282,17 @@ int main(int argc, char **argv)
 		}
 
 	}
+#else
+	for(;;) {
+		char buf[4096];
+		if(fgets(buf, sizeof(buf), stdin)) {
+			do_eval(NULL, 0, buf);
+			printf("\n");
+		} else {
+			break;
+		}
+	}
+#endif
 
 	return 0;
 }

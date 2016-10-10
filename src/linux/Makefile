@@ -9,12 +9,16 @@ CC	:= $(CROSS)gcc
 
 VPATH   := ../zforth
 CFLAGS	+= -I. -I../zforth
-
 CFLAGS  += -Os -g -std=c89 -ansi -pedantic -MMD
 CFLAGS  += -Wall -Wextra -Werror -Wno-unused-parameter -Wno-clobbered -Wno-unused-result
 LDFLAGS	+= -g 
 
-LIBS += -lreadline -lm
+LIBS	+= -lm
+
+ifndef noreadline
+LIBS	+= -lreadline
+CFLAGS	+= -DUSE_READLINE
+endif
 
 $(BIN): $(OBJS)
 	$(CC) $(LDFLAGS) -o $@ $(OBJS) $(LIBS)
