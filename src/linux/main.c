@@ -62,7 +62,7 @@ void include(const char *fname)
 {
 	char buf[256];
 
-	FILE *f = fopen(fname, "r");
+	FILE *f = fopen(fname, "rb");
 	int line = 1;
 	if(f) {
 		while(fgets(buf, sizeof(buf), f)) {
@@ -83,7 +83,7 @@ static void save(const char *fname)
 {
 	size_t len;
 	void *p = zf_dump(&len);
-	FILE *f = fopen(fname, "w");
+	FILE *f = fopen(fname, "wb");
 	if(f) {
 		fwrite(p, 1, len, f);
 		fclose(f);
@@ -99,10 +99,12 @@ static void load(const char *fname)
 {
 	size_t len;
 	void *p = zf_dump(&len);
-	FILE *f = fopen(fname, "r");
+	FILE *f = fopen(fname, "rb");
 	if(f) {
 		fread(p, 1, len, f);
 		fclose(f);
+	} else {
+		perror("read");
 	}
 }
 
