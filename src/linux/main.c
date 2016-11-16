@@ -217,6 +217,7 @@ int main(int argc, char **argv)
 	int i;
 	int c;
 	int trace = 0;
+	int line = 0;
 	const char *fname_load = NULL;
 
 	/* Parse command line options */
@@ -275,7 +276,7 @@ int main(int argc, char **argv)
 
 		if(strlen(buf) > 0) {
 
-			do_eval(NULL, 0, buf);
+			do_eval("stdin", ++line, buf);
 			printf("\n");
 
 			add_history(buf);
@@ -288,7 +289,7 @@ int main(int argc, char **argv)
 	for(;;) {
 		char buf[4096];
 		if(fgets(buf, sizeof(buf), stdin)) {
-			do_eval(NULL, 0, buf);
+			do_eval("stdin", ++line, buf);
 			printf("\n");
 		} else {
 			break;
