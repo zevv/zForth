@@ -142,7 +142,8 @@ static const char *op_name(zf_addr addr)
 }
 
 #else
-#define trace(...) {}
+static void trace(const char *fmt, ...) { }
+static const char *op_name(zf_addr addr) { return NULL; }
 #endif
 
 
