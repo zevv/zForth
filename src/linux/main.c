@@ -41,6 +41,7 @@ zf_result do_eval(const char *src, int line, const char *buf)
 		case ZF_ABORT_NOT_A_WORD: msg = "not a word"; break;
 		case ZF_ABORT_COMPILE_ONLY_WORD: msg = "compile-only word"; break;
 		case ZF_ABORT_INVALID_SIZE: msg = "invalid size"; break;
+		case ZF_ABORT_DIVISION_BY_ZERO: msg = "division by zero"; break;
 		default: msg = "unknown error";
 	}
 

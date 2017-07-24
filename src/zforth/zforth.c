@@ -628,13 +628,17 @@ static void do_prim(zf_prim op, const char *input)
 			break;
 
 		case PRIM_DIV:
-			d2 = zf_pop();
+			if((d2 = zf_pop()) == 0) {
+				zf_abort(ZF_ABORT_DIVISION_BY_ZERO);
+			}
 			d1 = zf_pop();
-			zf_push(d1/d2);
+			zf_push(d1 / d2);
 			break;
 
 		case PRIM_MOD:
-			d2 = zf_pop();
+			if((d2 = zf_pop()) == 0) {
+				zf_abort(ZF_ABORT_DIVISION_BY_ZERO);
+			}
 			d1 = zf_pop();
 			zf_push((int)d1 % (int)d2);
 			break;
