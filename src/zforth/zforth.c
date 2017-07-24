@@ -636,7 +636,7 @@ static void do_prim(zf_prim op, const char *input)
 			break;
 
 		case PRIM_MOD:
-			if((d2 = zf_pop()) == 0) {
+			if((int)(d2 = zf_pop()) == 0) {
 				zf_abort(ZF_ABORT_DIVISION_BY_ZERO);
 			}
 			d1 = zf_pop();
