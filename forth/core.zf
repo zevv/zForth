@@ -69,7 +69,7 @@
 ( forth style 'do' and 'loop', including loop iterators 'i' and 'j' )
 
 : i ' lit , 0 , ' pickr , ; immediate
-: j ' lit , 3 , ' pickr , ; immediate
+: j ' lit , 2 , ' pickr , ; immediate
 : do ' swap , ' >r , ' >r , here ; immediate
 : loop+ ' r> , ' + , ' dup , ' >r , ' lit , 1 , ' pickr , ' > , ' jmp0 , , ' r> , ' drop , ' r> , ' drop , ; immediate
 : loop ' lit , 1 , postpone loop+ ;  immediate

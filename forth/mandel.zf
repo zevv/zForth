@@ -35,8 +35,12 @@
 	until
 	drop drop rot rot drop drop ;
 
-: rows   1.0 -1.0 do j i point output 0.020 loop+ cr ;
-: mandel 0.5 -2.0 do rows             0.038 loop+ ; 
+: rows   ;
+: mandel 0.5 -2.0 do
+           1.0 -1.0 do
+             j i point output
+           0.020 loop+ cr
+         0.038 loop+ ;
 
 mandel
 
