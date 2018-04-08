@@ -80,6 +80,10 @@ forth statements from a file or terminal and pass the strings to `zf_eval()` to
 interpret, compile and run the code. Check the embedded documentation in
 `zforth.h` for details.
 
+`zforth.c` depends on a number preprocessor constants for configuration which
+you can choose to fit your needs. Documentation is included in the file
+`zfconf.h`.
+
 A demo application for running zForth in linux is provided here, simply run `make`
 to build.
 
