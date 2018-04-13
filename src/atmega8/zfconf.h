@@ -47,8 +47,8 @@ typedef unsigned int zf_addr;
 #define ZF_ADDR_FMT "%04x"
 
 
-/* Number of cells in memory regions: dictionary size is given in bytes, stack
- * sizes are number of elements */
+/* Memory region sizes: dictionary size is given in bytes, stack sizes are
+ * number of elements of type zf_cell */
 
 #define ZF_DICT_SIZE 512 
 #define ZF_DSTACK_SIZE 8
