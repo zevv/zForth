@@ -6,7 +6,7 @@
 
 ( Ar Ai Br Bi -- Cr Ci : Add two complex numbers )
 
-: c+       rot swap + rot rot + swap ;
+: c+       rot + rot rot + swap ;
 
 ( Ar Ai -- A²r A²i : Square a complex number )
 
