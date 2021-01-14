@@ -258,4 +258,5 @@ r»0
  0032 0000 ┊  (exit) r«0 
 
 ````
-
+### Dependencies
+- libreadline-dev 
