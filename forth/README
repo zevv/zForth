@@ -16,5 +16,3 @@ memaccess.zf      Words for accessing memory with various types.
 
 misc.zf           Various stuff I use which has no other place to go
 
-strings.zf        String operations
-
