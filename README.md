@@ -90,7 +90,7 @@ to build.
 To start zForth and load the core forth code, run:
 
 ````
-./src/linux/zfort forth/core.zf
+./src/linux/zforth forth/core.zf
 ````
 
 And zForth will welcome you with the startup message:
