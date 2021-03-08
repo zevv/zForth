@@ -285,6 +285,7 @@ int main(int argc, char **argv)
 
 		}
 
+		free(buf);
 	}
 #else
 	for(;;) {
