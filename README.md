@@ -22,6 +22,10 @@ scripting language for extending embedded applications on small
 microprocessors. It is not particularly fast, but should be easy to integrate
 on any platform with a few kB's of ROM and RAM.
 
+Also note that zForth is just _a_ forth, but does not specifically implement or
+care about any of the standards like ANS Forth - the kernel might or might not
+behave as the standard, and the current standard library is rather limited.
+
 For a lot of programmers Forth seems to belong to the domain of alien
 languages: it does not look like any mainstream language most people encounter,
 and is built on a number of philosophies that takes some time to get used to.
