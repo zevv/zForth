@@ -18,6 +18,7 @@ typedef enum {
 	ZF_ABORT_COMPILE_ONLY_WORD,
 	ZF_ABORT_INVALID_SIZE,
 	ZF_ABORT_DIVISION_BY_ZERO,
+	ZF_ABORT_INVALID_USERVAR,
 	ZF_ABORT_BUSY,
 	ZF_ABORT_EXTERNAL
 } zf_result;
@@ -46,6 +47,16 @@ typedef enum {
 	ZF_SYSCALL_USER = 128
 } zf_syscall_id;
 
+typedef enum {
+    ZF_USERVAR_HERE = 0,
+    ZF_USERVAR_LATEST,
+    ZF_USERVAR_TRACE,
+    ZF_USERVAR_COMPILING,
+    ZF_USERVAR_POSTPONE,
+
+    ZF_USERVAR_COUNT
+} zf_uservar_id;
+
 
 /* ZForth API functions */
 
@@ -59,6 +70,9 @@ void zf_abort(zf_result reason);
 void zf_push(zf_cell v);
 zf_cell zf_pop(void);
 zf_cell zf_pick(zf_addr n);
+
+zf_result zf_uservar_set(zf_uservar_id uv, zf_cell v);
+zf_result zf_uservar_get(zf_uservar_id uv, zf_cell *v);
 
 bool zf_running(void);
 
