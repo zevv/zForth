@@ -88,6 +88,9 @@ static const char uservar_names[] =
 
 static zf_addr *uservar = (zf_addr *)dict;
 
+/* Execution state */
+static bool running = false;
+
 
 /* Prototypes */
 
@@ -884,14 +887,23 @@ zf_result zf_eval(const char *buf)
 	zf_result r = (zf_result)setjmp(jmpbuf);
 
 	if(r == ZF_OK) {
+		if (running)
+		{
+			return ZF_ABORT_BUSY;
+		}
+
+		running = true;
+
 		for(;;) {
 			handle_char(*buf);
 			if(*buf == '\0') {
+				running = false;
 				return ZF_OK;
 			}
 			buf ++;
 		}
 	} else {
+		running = false;
 		COMPILING = 0;
 		rsp = 0;
 		dsp = 0;
@@ -905,6 +917,12 @@ void *zf_dump(size_t *len)
 	if(len) *len = sizeof(dict);
 	return dict;
 }
+
+bool zf_running(void)
+{
+    return running;
+}
+
 
 /*
  * End
