@@ -1,6 +1,7 @@
 #ifndef zforth_h
 #define zforth_h
 
+#include <stdbool.h>
 #include "zfconf.h"
 
 /* Abort reasons */
@@ -16,7 +17,8 @@ typedef enum {
 	ZF_ABORT_NOT_A_WORD,
 	ZF_ABORT_COMPILE_ONLY_WORD,
 	ZF_ABORT_INVALID_SIZE,
-	ZF_ABORT_DIVISION_BY_ZERO
+	ZF_ABORT_DIVISION_BY_ZERO,
+	ZF_ABORT_BUSY
 } zf_result;
 
 typedef enum {
@@ -56,6 +58,8 @@ void zf_abort(zf_result reason);
 void zf_push(zf_cell v);
 zf_cell zf_pop(void);
 zf_cell zf_pick(zf_addr n);
+
+bool zf_running(void);
 
 /* Host provides these functions */
 
