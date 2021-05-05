@@ -76,12 +76,11 @@ static jmp_buf jmpbuf;
  * C they are stored in an array of zf_addr with friendly reference names
  * through some macros */
 
-#define HERE      uservar[0]    /* compilation pointer in dictionary */
-#define LATEST    uservar[1]    /* pointer to last compiled word */
-#define TRACE     uservar[2]    /* trace enable flag */
-#define COMPILING uservar[3]    /* compiling flag */
-#define POSTPONE  uservar[4]    /* flag to indicate next imm word should be compiled */
-#define USERVAR_COUNT 5
+#define HERE      uservar[ZF_USERVAR_HERE]      /* compilation pointer in dictionary */
+#define LATEST    uservar[ZF_USERVAR_LATEST]    /* pointer to last compiled word */
+#define TRACE     uservar[ZF_USERVAR_TRACE]     /* trace enable flag */
+#define COMPILING uservar[ZF_USERVAR_COMPILING] /* compiling flag */
+#define POSTPONE  uservar[ZF_USERVAR_POSTPONE]  /* flag to indicate next imm word should be compiled */
 
 static const char uservar_names[] =
 	_("h")   _("latest") _("trace")  _("compiling")  _("_postpone");
@@ -504,7 +503,7 @@ static void execute(zf_addr addr)
 
 static zf_addr peek(zf_addr addr, zf_cell *val, int len)
 {
-	if(addr < USERVAR_COUNT) {
+	if(addr < ZF_USERVAR_COUNT) {
 		*val = uservar[addr];
 		return 1;
 	} else {
@@ -572,7 +571,7 @@ static void do_prim(zf_prim op, const char *input)
 			d2 = zf_pop();
 			addr = zf_pop();
 			d1 = zf_pop();
-			if(addr < USERVAR_COUNT) {
+			if(addr < ZF_USERVAR_COUNT) {
 				uservar[addr] = d1;
 				break;
 			}
@@ -817,7 +816,7 @@ static void handle_char(char c)
 
 void zf_init(int enable_trace)
 {
-	HERE = USERVAR_COUNT * sizeof(zf_addr);
+	HERE = ZF_USERVAR_COUNT * sizeof(zf_addr);
 	TRACE = enable_trace;
 	LATEST = 0;
 	dsp = 0;
@@ -916,6 +915,32 @@ void *zf_dump(size_t *len)
 {
 	if(len) *len = sizeof(dict);
 	return dict;
+}
+
+zf_result zf_uservar_set(zf_uservar_id uv, zf_cell v)
+{
+	zf_result result = ZF_ABORT_INVALID_USERVAR;
+
+	if (uv < ZF_USERVAR_COUNT) {
+		uservar[uv] = v;
+		result = ZF_OK;
+	}
+
+	return result;
+}
+
+zf_result zf_uservar_get(zf_uservar_id uv, zf_cell *v)
+{
+	zf_result result = ZF_ABORT_INVALID_USERVAR;
+
+	if (uv < ZF_USERVAR_COUNT) {
+		if (v != NULL) {
+			*v = uservar[uv];
+		}
+		result = ZF_OK;
+	}
+
+	return result;
 }
 
 bool zf_running(void)
