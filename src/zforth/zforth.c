@@ -921,8 +921,7 @@ zf_result zf_uservar_set(zf_uservar_id uv, zf_cell v)
 {
 	zf_result result = ZF_ABORT_INVALID_USERVAR;
 
-	if (uv < ZF_USERVAR_COUNT)
-	{
+	if (uv < ZF_USERVAR_COUNT) {
 		uservar[uv] = v;
 		result = ZF_OK;
 	}
@@ -934,10 +933,8 @@ zf_result zf_uservar_get(zf_uservar_id uv, zf_cell *v)
 {
 	zf_result result = ZF_ABORT_INVALID_USERVAR;
 
-	if (uv < ZF_USERVAR_COUNT)
-	{
-		if (v != NULL)
-		{
+	if (uv < ZF_USERVAR_COUNT) {
+		if (v != NULL) {
 			*v = uservar[uv];
 		}
 		result = ZF_OK;
