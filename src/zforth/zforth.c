@@ -35,6 +35,17 @@
 #define _(s) s "\0"
 
 typedef enum {
+	ZF_MEM_SIZE_VAR,
+	ZF_MEM_SIZE_CELL,
+	ZF_MEM_SIZE_U8,
+	ZF_MEM_SIZE_U16,
+	ZF_MEM_SIZE_U32,
+	ZF_MEM_SIZE_S8,
+	ZF_MEM_SIZE_S16,
+	ZF_MEM_SIZE_S32
+} zf_mem_size;
+
+typedef enum {
 	PRIM_EXIT,    PRIM_LIT,       PRIM_LTZ,  PRIM_COL,     PRIM_SEMICOL,  PRIM_ADD,
 	PRIM_SUB,     PRIM_MUL,       PRIM_DIV,  PRIM_MOD,     PRIM_DROP,     PRIM_DUP,
 	PRIM_PICKR,   PRIM_IMMEDIATE, PRIM_PEEK, PRIM_POKE,    PRIM_SWAP,     PRIM_ROT,
@@ -86,9 +97,6 @@ static const char uservar_names[] =
 	_("h")   _("latest") _("trace")  _("compiling")  _("_postpone");
 
 static zf_addr *uservar = (zf_addr *)dict;
-
-/* Execution state */
-static bool running = false;
 
 
 /* Prototypes */
@@ -886,23 +894,14 @@ zf_result zf_eval(const char *buf)
 	zf_result r = (zf_result)setjmp(jmpbuf);
 
 	if(r == ZF_OK) {
-		if (running)
-		{
-			return ZF_ABORT_BUSY;
-		}
-
-		running = true;
-
 		for(;;) {
 			handle_char(*buf);
 			if(*buf == '\0') {
-				running = false;
 				return ZF_OK;
 			}
 			buf ++;
 		}
 	} else {
-		running = false;
 		COMPILING = 0;
 		rsp = 0;
 		dsp = 0;
@@ -942,12 +941,6 @@ zf_result zf_uservar_get(zf_uservar_id uv, zf_cell *v)
 
 	return result;
 }
-
-bool zf_running(void)
-{
-    return running;
-}
-
 
 /*
  * End
