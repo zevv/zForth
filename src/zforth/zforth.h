@@ -1,7 +1,6 @@
 #ifndef zforth_h
 #define zforth_h
 
-#include <stdbool.h>
 #include "zfconf.h"
 
 /* Abort reasons */
@@ -19,7 +18,6 @@ typedef enum {
 	ZF_ABORT_INVALID_SIZE,
 	ZF_ABORT_DIVISION_BY_ZERO,
 	ZF_ABORT_INVALID_USERVAR,
-	ZF_ABORT_BUSY,
 	ZF_ABORT_EXTERNAL
 } zf_result;
 
@@ -62,8 +60,6 @@ zf_cell zf_pick(zf_addr n);
 
 zf_result zf_uservar_set(zf_uservar_id uv, zf_cell v);
 zf_result zf_uservar_get(zf_uservar_id uv, zf_cell *v);
-
-bool zf_running(void);
 
 /* Host provides these functions */
 
