@@ -672,9 +672,19 @@ static void do_prim(zf_prim op, const char *input)
 			break;
 
 		case PRIM_TICK:
-			ip += dict_get_cell(ip, &d1);
-			trace("%s/", op_name(d1));
-			zf_push(d1);
+			if (COMPILING) {
+				ip += dict_get_cell(ip, &d1);
+				trace("%s/", op_name(d1));
+				zf_push(d1);
+			}
+			else {
+				if (input) {
+					if (find_word(input,&addr,&len)) zf_push(len);
+					else zf_abort(ZF_ABORT_INTERNAL_ERROR);
+				}
+				else input_state = ZF_INPUT_PASS_WORD;
+			}
+					
 			break;
 
 		case PRIM_COMMA:

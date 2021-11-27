@@ -26,7 +26,8 @@
 
 
 ( some operators and shortcuts )
-
+: 1+ 1 + ;
+: 1- 1 - ;
 : over 1 pick ;
 : +!   dup @ rot + swap ! ;
 : inc  1 swap +! ;
@@ -50,12 +51,25 @@
 
 
 ( 'begin' gets the current address, a jump or conditional jump back is generated
-  by 'again', 'until' or 'times' )
+  by 'again', 'until' )
 
 : begin   here ; immediate
 : again   ' jmp , , ; immediate
 : until   ' jmp0 , , ; immediate
-: times ' 1 - , ' dup , ' =0 , postpone until ; immediate
+
+
+( '{ ... ... ... n x}' repeat n times definition - eg. : 5hello { ." hello " 5 x} ; )
+
+: { ( -- ) ' lit , 0 , ' >r , here ; immediate
+: x} ( -- ) ' r> , ' 1+ , ' dup , ' >r , ' = , postpone until ' r> , ' drop , ; immediate
+
+
+( vectored execution - execute XT eg. ' hello exe )
+
+: exe ( XT -- ) ' lit , here dup , ' >r , ' >r , ' exit , here swap ! ; immediate
+
+( execute XT n times  e.g. ' hello 3 times )
+: times ( XT n -- ) { >r dup >r exe r> r> dup x} drop drop ;
 
 
 ( 'if' prepares conditional jump, address will be filled in by 'else' or 'fi' )
