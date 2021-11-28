@@ -180,6 +180,27 @@ void zf_host_trace(const char *fmt, va_list va)
 	fprintf(stderr, "\033[0m");
 }
 
+static int isItNumber(const char *buf) {
+    int res = 1;
+    int len = strlen(buf);
+    int i = 0;
+    unsigned char ishex = 0;
+    
+    if (buf[0] == '-') {
+        i = 1;
+        
+    }
+    for(; i < len; i++) {
+        if (ishex && (buf[i] >= 'a' && buf[i] <= 'f')) {
+            continue;
+        }
+        if((!(buf[i] >= '0' && buf[i] <= '9')) && (buf[i] != '.')) {
+            res = 0;
+            break;
+        }
+    }
+    return res;
+}
 
 /*
  * Parse number
@@ -187,12 +208,16 @@ void zf_host_trace(const char *fmt, va_list va)
 
 zf_cell zf_host_parse_num(const char *buf)
 {
-	zf_cell v;
-	int r = sscanf(buf, "%f", &v);
-	if(r == 0) {
-		zf_abort(ZF_ABORT_NOT_A_WORD);
-	}
-	return v;
+    zf_cell v;
+    int r;
+
+    if( (r = isItNumber(buf))) {
+        r = sscanf(buf, "%f", &v);
+    }
+    if(r == 0) {
+        zf_abort(ZF_ABORT_NOT_A_WORD);
+    }
+    return v;
 }
 
 
