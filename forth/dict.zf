@@ -11,4 +11,18 @@
 : name dup @ 31 & swap next dup next rot tell @ ;
 : words latest @ begin name 32 emit dup 0 = until cr drop ;
 
+( 'dump' memory make hex dump len bytes from addr )
+: hex_t ' lit ,  here dup , s" 0123456789abcdef" allot swap ! ; immediate
+: *hex_t hex_t ;
+: .hex *hex_t + @ emit ;
+: >nib ( n -- low high ) dup 15 & swap -16 & 16 / ;
+: ffemit ( n -- ) >nib .hex .hex ;
+: ffffemit ( n -- ) >nib >nib >nib { .hex 4 x} ;
+: @LSB ( addr -- LSB ) 2 @@ 255 & ;
+: between? ( n low_lim high_lim -- bool ) 2 pick > rot rot > & ; 
+: 4hex ( a -- a_new ) { dup @LSB ffemit 32 emit 1+ 4 x} 124 emit ;
+: 4ascii ( a -- a_new ) { dup @LSB dup 31 127 between? if emit else drop 46 emit fi 1+ 4 x} 124 emit ;
+: .addr ( a -- ) ffffemit ."    " ;
+: 16line ( a -- a_new ) dup .addr dup { 4hex 4 x} drop { 4ascii 4 x} cr ;
+: dump ( addr len -- ) over + swap begin 16line over over < until drop drop ; 
 
