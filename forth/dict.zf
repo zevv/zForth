@@ -20,9 +20,9 @@
 : ffffemit ( n -- ) >nib >nib >nib { .hex 4 x} ;
 : @LSB ( addr -- LSB ) 2 @@ 255 & ;
 : between? ( n low_lim high_lim -- bool ) 2 pick > rot rot > & ; 
-: 4hex ( a -- a_new ) { dup @LSB ffemit 32 emit 1+ 4 x} 124 emit ;
-: 4ascii ( a -- a_new ) { dup @LSB dup 31 127 between? if emit else drop 46 emit fi 1+ 4 x} 124 emit ;
+: 8hex ( a -- a_new ) { dup @LSB ffemit 32 emit 1+ 8 x} 32 emit ;
+: 16ascii ( a -- a_new ) 124 emit { dup @LSB dup 31 127 between? if emit else drop 46 emit fi 1+ 16 x} 124 emit ;
 : .addr ( a -- ) ffffemit ."    " ;
-: 16line ( a -- a_new ) dup .addr dup { 4hex 4 x} drop { 4ascii 4 x} cr ;
+: 16line ( a -- a_new ) dup .addr dup { 8hex 2 x} drop 16ascii cr ;
 : dump ( addr len -- ) over + swap begin 16line over over < until drop drop ; 
 
