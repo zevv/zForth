@@ -9,7 +9,15 @@
 ( 'words' generates a list of all define words )
 
 : name dup @ 31 & swap next dup next rot tell @ ;
-: words latest @ begin name 32 emit dup 0 = until cr drop ;
+: words latest @ begin name br dup 0 = until cr drop ;
+: prim? ( w -- bool ) @ 32 & ;
+: a->xt ( w -- xt ) dup dup @ 31 & swap next next + swap prim? if @ fi ;
+: xt->a ( xt -- w ) latest @ begin dup a->xt 2 pick = if swap drop exit fi next @ dup 0 = until swap drop ;
+: lit?jmp? ( a -- a boolean ) dup @ dup 1 = swap dup 18 = swap 19 = + + ;
+: disas ( a -- a ) dup dup . br br @ xt->a name drop lit?jmp? if br next dup @ . fi cr ;
+
+( 'see' needs starting address on stack: e.g. ' words see )
+: see ( xt -- ) dup xt->a name cr drop begin disas next dup @ =0 until drop ;
 
 ( 'dump' memory make hex dump len bytes from addr )
 : hex_t ' lit ,  here dup , s" 0123456789abcdef" allot swap ! ; immediate
