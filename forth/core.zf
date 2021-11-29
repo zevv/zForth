@@ -40,6 +40,7 @@
 : not  =0 ;
 : !=   = not ;
 : cr   10 emit ;
+: br 32 emit ;
 : ..   dup . ;
 : here h @ ;
 
