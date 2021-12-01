@@ -188,8 +188,9 @@ void zf_host_trace(const char *fmt, va_list va)
 zf_cell zf_host_parse_num(const char *buf)
 {
 	zf_cell v;
-	int r = sscanf(buf, "%f", &v);
-	if(r == 0) {
+	int n = 0;
+	int r = sscanf(buf, "%f%n", &v, &n);
+	if(r == 0 || buf[n] != '\0') {
 		zf_abort(ZF_ABORT_NOT_A_WORD);
 	}
 	return v;
