@@ -111,7 +111,7 @@ static void dict_get_bytes(zf_addr addr, void *buf, size_t len);
 
 #if ZF_ENABLE_TRACE
 
-static void trace(const char *fmt, ...)
+static void do_trace(const char *fmt, ...)
 {
 	if(TRACE) {
 		va_list va;
@@ -121,6 +121,7 @@ static void trace(const char *fmt, ...)
 	}
 }
 
+#define trace(...) if(TRACE) do_trace(__VA_ARGS__)
 
 static const char *op_name(zf_addr addr)
 {
