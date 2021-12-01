@@ -739,12 +739,12 @@ static void do_prim(zf_prim op, const char *input)
 			break;
 
 		case PRIM_SHL:
-			d1=zf_pop();
+			d1 = zf_pop();
 			zf_push((int)zf_pop() << (int)d1);
 			break;
 
 		case PRIM_SHR:
-			d1=zf_pop();
+			d1 = zf_pop();
 			zf_push((int)zf_pop() >> (int)d1);
 			break;
 
