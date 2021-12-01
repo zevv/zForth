@@ -112,6 +112,7 @@ static void dict_get_bytes(zf_addr addr, void *buf, size_t len);
 /* Tracing functions. If disabled, the trace() function is replaced by an empty
  * macro, allowing the compiler to optimize away the function calls to
  * op_name() */
+#define TR(...) if(TRACE) trace(__VA_ARGS__)
 
 #if ZF_ENABLE_TRACE
 
@@ -179,7 +180,7 @@ void zf_abort(zf_result reason)
 void zf_push(zf_cell v)
 {
 	CHECK(dsp < ZF_DSTACK_SIZE, ZF_ABORT_DSTACK_OVERRUN);
-	if(TRACE) trace("»" ZF_CELL_FMT " ", v);
+	TR("»" ZF_CELL_FMT " ", v);
 	dstack[dsp++] = v;
 }
 
@@ -189,7 +190,7 @@ zf_cell zf_pop(void)
 	zf_cell v;
 	CHECK(dsp > 0, ZF_ABORT_DSTACK_UNDERRUN);
 	v = dstack[--dsp];
-	if(TRACE) trace("«" ZF_CELL_FMT " ", v);
+	TR("«" ZF_CELL_FMT " ", v);
 	return v;
 }
 
@@ -204,7 +205,7 @@ zf_cell zf_pick(zf_addr n)
 static void zf_pushr(zf_cell v)
 {
 	CHECK(rsp < ZF_RSTACK_SIZE, ZF_ABORT_RSTACK_OVERRUN);
-	if(TRACE) trace("r»" ZF_CELL_FMT " ", v);
+	TR("r»" ZF_CELL_FMT " ", v);
 	rstack[rsp++] = v;
 }
 
@@ -214,7 +215,7 @@ static zf_cell zf_popr(void)
 	zf_cell v;
 	CHECK(rsp > 0, ZF_ABORT_RSTACK_UNDERRUN);
 	v = rstack[--rsp];
-	if(TRACE) trace("r«" ZF_CELL_FMT " ", v);
+	TR("r«" ZF_CELL_FMT " ", v);
 	return v;
 }
 
@@ -271,24 +272,24 @@ static zf_addr dict_put_cell_typed(zf_addr addr, zf_cell v, zf_mem_size size)
 	unsigned int vi = v;
 	uint8_t t[2];
 
-	if(TRACE) trace("\n+" ZF_ADDR_FMT " " ZF_ADDR_FMT, addr, (zf_addr)v);
+	TR("\n+" ZF_ADDR_FMT " " ZF_ADDR_FMT, addr, (zf_addr)v);
 
 	if(size == ZF_MEM_SIZE_VAR) {
 		if((v - vi) == 0) {
 			if(vi < 128) {
-				if(TRACE) trace(" ¹");
+				TR(" ¹");
 				t[0] = vi;
 				return dict_put_bytes(addr, t, 1);
 			}
 			if(vi < 16384) {
-				if(TRACE) trace(" ²");
+				TR(" ²");
 				t[0] = (vi >> 8) | 0x80;
 				t[1] = vi;
 				return dict_put_bytes(addr, t, sizeof(t));
 			}
 		}
 
-		if(TRACE) trace(" ⁵");
+		TR(" ⁵");
 		t[0] = 0xff;
 		return dict_put_bytes(addr+0, t, 1) + 
 		       dict_put_bytes(addr+1, &v, sizeof(v));
@@ -364,7 +365,7 @@ static zf_addr dict_get_cell(zf_addr addr, zf_cell *v)
 static void dict_add_cell_typed(zf_cell v, zf_mem_size size)
 {
 	HERE += dict_put_cell_typed(HERE, v, size);
-	if(TRACE) trace(" ");
+	TR(" ");
 }
 
 
@@ -377,7 +378,7 @@ static void dict_add_cell(zf_cell v)
 static void dict_add_op(zf_addr op)
 {
 	dict_add_cell(op);
-	if(TRACE) trace("+%s ", op_name(op));
+	TR("+%s ", op_name(op));
 }
 
 
@@ -391,7 +392,7 @@ static void dict_add_lit(zf_cell v)
 static void dict_add_str(const char *s)
 {
 	size_t l;
-	if(TRACE) trace("\n+" ZF_ADDR_FMT " " ZF_ADDR_FMT " s '%s'", HERE, 0, s);
+	TR("\n+" ZF_ADDR_FMT " " ZF_ADDR_FMT " s '%s'", HERE, 0, s);
 	l = strlen(s);
 	HERE += dict_put_bytes(HERE, s, l);
 }
@@ -404,13 +405,13 @@ static void dict_add_str(const char *s)
 static void create(const char *name, int flags)
 {
 	zf_addr here_prev;
-	if(TRACE) trace("\n=== create '%s'", name);
+	TR("\n=== create '%s'", name);
 	here_prev = HERE;
 	dict_add_cell((strlen(name)) | flags);
 	dict_add_cell(LATEST);
 	dict_add_str(name);
 	LATEST = here_prev;
-	if(TRACE) trace("\n===");
+	TR("\n===");
 }
 
 
@@ -469,8 +470,8 @@ static void run(const char *input)
 		zf_addr l = dict_get_cell(ip, &d);
 		zf_addr code = d;
 
-		if(TRACE) trace("\n "ZF_ADDR_FMT " " ZF_ADDR_FMT " ", ip, code);
-		for(i=0; i<rsp; i++) if(TRACE) trace("┊  ");
+		TR("\n "ZF_ADDR_FMT " " ZF_ADDR_FMT " ", ip, code);
+		for(i=0; i<rsp; i++) TR("┊  ");
 		
 		ip += l;
 
@@ -486,7 +487,7 @@ static void run(const char *input)
 			}
 
 		} else {
-			if(TRACE) trace("%s/" ZF_ADDR_FMT " ", op_name(code), code);
+			TR("%s/" ZF_ADDR_FMT " ", op_name(code), code);
 			zf_pushr(ip);
 			ip = code;
 		}
@@ -506,7 +507,7 @@ static void execute(zf_addr addr)
 	rsp = 0;
 	zf_pushr(0);
 
-	if(TRACE) trace("\n[%s/" ZF_ADDR_FMT "] ", op_name(ip), ip);
+	TR("\n[%s/" ZF_ADDR_FMT "] ", op_name(ip), ip);
 	run(NULL);
 
 }
@@ -533,7 +534,7 @@ static void do_prim(zf_prim op, const char *input)
 	zf_cell d1, d2, d3;
 	zf_addr addr, len;
 
-	if(TRACE) trace("(%s) ", op_name(op));
+	TR("(%s) ", op_name(op));
 
 	switch(op) {
 
@@ -552,7 +553,7 @@ static void do_prim(zf_prim op, const char *input)
 
 		case PRIM_SEMICOL:
 			dict_add_op(PRIM_EXIT);
-			if(TRACE) trace("\n===");
+			TR("\n===");
 			COMPILING = 0;
 			break;
 
@@ -662,14 +663,14 @@ static void do_prim(zf_prim op, const char *input)
 
 		case PRIM_JMP:
 			ip += dict_get_cell(ip, &d1);
-			if(TRACE) trace("ip " ZF_ADDR_FMT "=>" ZF_ADDR_FMT, ip, (zf_addr)d1);
+			TR("ip " ZF_ADDR_FMT "=>" ZF_ADDR_FMT, ip, (zf_addr)d1);
 			ip = d1;
 			break;
 
 		case PRIM_JMP0:
 			ip += dict_get_cell(ip, &d1);
 			if(zf_pop() == 0) {
-				if(TRACE) trace("ip " ZF_ADDR_FMT "=>" ZF_ADDR_FMT, ip, (zf_addr)d1);
+				TR("ip " ZF_ADDR_FMT "=>" ZF_ADDR_FMT, ip, (zf_addr)d1);
 				ip = d1;
 			}
 			break;
@@ -677,7 +678,7 @@ static void do_prim(zf_prim op, const char *input)
 		case PRIM_TICK:
 			if (COMPILING) {
 				ip += dict_get_cell(ip, &d1);
-				if(TRACE) trace("%s/", op_name(d1));
+				TR("%s/", op_name(d1));
 				zf_push(d1);
 			}
 			else {
