@@ -1,11 +1,8 @@
 
 #include <stdio.h>
 #include <stdarg.h>
-#include <limits.h>
 #include <errno.h>
 #include <string.h>
-#include <stdarg.h>
-#include <stdint.h>
 #include <stdlib.h>
 #include <getopt.h>
 #include <math.h>

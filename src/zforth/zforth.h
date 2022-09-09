@@ -1,6 +1,15 @@
 #ifndef zforth_h
 #define zforth_h
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
+#include <stddef.h>
+#include <stdarg.h>
+#include <stdint.h>
+
 #include "zfconf.h"
 
 /* Abort reasons */
@@ -66,5 +75,9 @@ zf_result zf_uservar_get(zf_uservar_id uv, zf_cell *v);
 zf_input_state zf_host_sys(zf_syscall_id id, const char *last_word);
 void zf_host_trace(const char *fmt, va_list va);
 zf_cell zf_host_parse_num(const char *buf);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
