@@ -823,8 +823,9 @@ static void handle_char(char c)
 
 	if(input_state == ZF_INPUT_PASS_CHAR) {
 
+		char cstr[] = {c, '\0'};
 		input_state = ZF_INPUT_INTERPRET;
-		run(&c);
+		run(cstr);
 
 	} else if(c != '\0' && !isspace(c)) {
 
