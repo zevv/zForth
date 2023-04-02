@@ -129,7 +129,11 @@ zf_input_state zf_host_sys(zf_syscall_id id, const char *input)
 
 		case ZF_SYSCALL_TELL: {
 			zf_cell len = zf_pop();
-			void *buf = (uint8_t *)zf_dump(NULL) + (int)zf_pop();
+			zf_cell addr = zf_pop();
+			if(addr >= ZF_DICT_SIZE - len) {
+				zf_abort(ZF_ABORT_OUTSIDE_MEM);
+			}
+			void *buf = (uint8_t *)zf_dump(NULL) + (int)addr;
 			(void)fwrite(buf, 1, len, stdout);
 			fflush(stdout); }
 			break;
