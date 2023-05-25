@@ -191,7 +191,7 @@ zf_cell zf_host_parse_num(const char *buf)
 	zf_cell v;
 	int n = 0;
 	int r = sscanf(buf, "%f%n", &v, &n);
-	if(r == 0 || buf[n] != '\0') {
+	if(r != 1 || buf[n] != '\0') {
 		zf_abort(ZF_ABORT_NOT_A_WORD);
 	}
 	return v;
