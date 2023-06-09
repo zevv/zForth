@@ -49,6 +49,7 @@ typedef enum {
 	PRIM_JMP,     PRIM_JMP0,      PRIM_TICK, PRIM_COMMENT, PRIM_PUSHR,    PRIM_POPR,
 	PRIM_EQUAL,   PRIM_SYS,       PRIM_PICK, PRIM_COMMA,   PRIM_KEY,      PRIM_LITS,
 	PRIM_LEN,     PRIM_AND,       PRIM_OR,   PRIM_XOR,     PRIM_SHL,      PRIM_SHR,
+	PRIM_DEPTH,
 	PRIM_COUNT
 } zf_prim;
 
@@ -58,8 +59,9 @@ static const char prim_names[] =
 	_("pickr")   _("_immediate") _("@@")    _("!!")    _("swap")      _("rot")
 	_("jmp")     _("jmp0")       _("'")     _("_(")    _(">r")        _("r>")
 	_("=")       _("sys")        _("pick")  _(",,")    _("key")       _("lits")
-	_("##")      _("&")          _("|")     _("^")     _("<<")        _(">>");
-
+	_("##")      _("&")          _("|")     _("^")     _("<<")        _(">>")
+	_("depth")
+;
 
 /* Stacks and dictionary memory */
 
@@ -743,6 +745,10 @@ static void do_prim(zf_prim op, const char *input)
 		case PRIM_SHR:
 			d1 = zf_pop();
 			zf_push((int)zf_pop() >> (int)d1);
+			break;
+
+		case PRIM_DEPTH:
+			zf_push(dsp);
 			break;
 
 		default:
