@@ -42,6 +42,7 @@ typedef enum {
 	ZF_MEM_SIZE_S32
 } zf_mem_size;
 
+/* PRIM_COUNT is not a real primitive, but only used to have the number of enums */
 typedef enum {
 	PRIM_EXIT,    PRIM_LIT,       PRIM_LTZ,  PRIM_COL,     PRIM_SEMICOL,  PRIM_ADD,
 	PRIM_SUB,     PRIM_MUL,       PRIM_DIV,  PRIM_MOD,     PRIM_DROP,     PRIM_DUP,
