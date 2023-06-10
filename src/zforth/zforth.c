@@ -70,8 +70,6 @@ static uint8_t dict[ZF_DICT_SIZE];
 /* State and stack and interpreter pointers */
 
 static zf_input_state input_state;
-static zf_addr dsp;
-static zf_addr rsp;
 static zf_addr ip;
 
 /* setjmp env for handling aborts */
@@ -88,9 +86,12 @@ static jmp_buf jmpbuf;
 #define TRACE     uservar[ZF_USERVAR_TRACE]     /* trace enable flag */
 #define COMPILING uservar[ZF_USERVAR_COMPILING] /* compiling flag */
 #define POSTPONE  uservar[ZF_USERVAR_POSTPONE]  /* flag to indicate next imm word should be compiled */
+#define DSP       uservar[ZF_USERVAR_DSP]       /* data stack pointer */
+#define RSP	      uservar[ZF_USERVAR_RSP]       /* return stack pointer */
 
 static const char uservar_names[] =
-	_("h")   _("latest") _("trace")  _("compiling")  _("_postpone");
+	_("h")   _("latest") _("trace")  _("compiling")  _("_postpone")  _("dsp")
+	_("rsp");
 
 static zf_addr *uservar = (zf_addr *)dict;
 
@@ -172,17 +173,17 @@ void zf_abort(zf_result reason)
 
 void zf_push(zf_cell v)
 {
-	CHECK(dsp < ZF_DSTACK_SIZE, ZF_ABORT_DSTACK_OVERRUN);
+	CHECK(DSP < ZF_DSTACK_SIZE, ZF_ABORT_DSTACK_OVERRUN);
 	trace("»" ZF_CELL_FMT " ", v);
-	dstack[dsp++] = v;
+	dstack[DSP++] = v;
 }
 
 
 zf_cell zf_pop(void)
 {
 	zf_cell v;
-	CHECK(dsp > 0, ZF_ABORT_DSTACK_UNDERRUN);
-	v = dstack[--dsp];
+	CHECK(DSP > 0, ZF_ABORT_DSTACK_UNDERRUN);
+	v = dstack[--DSP];
 	trace("«" ZF_CELL_FMT " ", v);
 	return v;
 }
@@ -190,32 +191,32 @@ zf_cell zf_pop(void)
 
 zf_cell zf_pick(zf_addr n)
 {
-	CHECK(n < dsp, ZF_ABORT_DSTACK_UNDERRUN);
-	return dstack[dsp-n-1];
+	CHECK(n < DSP, ZF_ABORT_DSTACK_UNDERRUN);
+	return dstack[DSP-n-1];
 }
 
 
 static void zf_pushr(zf_cell v)
 {
-	CHECK(rsp < ZF_RSTACK_SIZE, ZF_ABORT_RSTACK_OVERRUN);
+	CHECK(RSP < ZF_RSTACK_SIZE, ZF_ABORT_RSTACK_OVERRUN);
 	trace("r»" ZF_CELL_FMT " ", v);
-	rstack[rsp++] = v;
+	rstack[RSP++] = v;
 }
 
 
 static zf_cell zf_popr(void)
 {
 	zf_cell v;
-	CHECK(rsp > 0, ZF_ABORT_RSTACK_UNDERRUN);
-	v = rstack[--rsp];
+	CHECK(RSP > 0, ZF_ABORT_RSTACK_UNDERRUN);
+	v = rstack[--RSP];
 	trace("r«" ZF_CELL_FMT " ", v);
 	return v;
 }
 
 zf_cell zf_pickr(zf_addr n)
 {
-	CHECK(n < rsp, ZF_ABORT_RSTACK_UNDERRUN);
-	return rstack[rsp-n-1];
+	CHECK(n < RSP, ZF_ABORT_RSTACK_UNDERRUN);
+	return rstack[RSP-n-1];
 }
 
 
@@ -464,7 +465,7 @@ static void run(const char *input)
 		zf_addr code = d;
 
 		trace("\n "ZF_ADDR_FMT " " ZF_ADDR_FMT " ", ip, code);
-		for(i=0; i<rsp; i++) trace("┊  ");
+		for(i=0; i<RSP; i++) trace("┊  ");
 		
 		ip += l;
 
@@ -497,7 +498,7 @@ static void run(const char *input)
 static void execute(zf_addr addr)
 {
 	ip = addr;
-	rsp = 0;
+	RSP = 0;
 	zf_pushr(0);
 
 	trace("\n[%s/" ZF_ADDR_FMT "] ", op_name(ip), ip);
@@ -852,8 +853,8 @@ void zf_init(int enable_trace)
 	HERE = ZF_USERVAR_COUNT * sizeof(zf_addr);
 	TRACE = enable_trace;
 	LATEST = 0;
-	dsp = 0;
-	rsp = 0;
+	DSP = 0;
+	RSP = 0;
 	COMPILING = 0;
 }
 
@@ -928,8 +929,8 @@ zf_result zf_eval(const char *buf)
 		}
 	} else {
 		COMPILING = 0;
-		rsp = 0;
-		dsp = 0;
+		RSP = 0;
+		DSP = 0;
 		return r;
 	}
 }
