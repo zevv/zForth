@@ -49,6 +49,8 @@ typedef enum {
     ZF_USERVAR_TRACE,
     ZF_USERVAR_COMPILING,
     ZF_USERVAR_POSTPONE,
+    ZF_USERVAR_DSP,
+    ZF_USERVAR_RSP,
 
     ZF_USERVAR_COUNT
 } zf_uservar_id;
