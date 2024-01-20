@@ -38,6 +38,7 @@
 
 typedef float zf_cell;
 #define ZF_CELL_FMT "%.14g"
+#define ZF_SCAN_FMT "%f"
 
 
 /* The type to use for pointers and adresses. 'unsigned int' is usually a good
