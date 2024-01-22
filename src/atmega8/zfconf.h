@@ -38,6 +38,7 @@
 
 typedef int32_t zf_cell;
 #define ZF_CELL_FMT "%ld"
+#define ZF_SCAN_FMT "%ld"
 
 
 /* The type to use for pointers and adresses. 'unsigned int' is usually a good
