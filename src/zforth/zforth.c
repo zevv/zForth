@@ -17,7 +17,7 @@
  * is set to 0, the boundary check code will not be compiled in to reduce size */
 
 #if ZF_ENABLE_BOUNDARY_CHECKS
-#define CHECK(exp, abort) if(!(exp)) zf_abort(abort);
+#define CHECK(exp, abort) if(!(exp)) zf_abort(abort, NULL);
 #else
 #define CHECK(exp, abort)
 #endif
@@ -75,6 +75,12 @@ static zf_addr ip;
 /* setjmp env for handling aborts */
 
 static jmp_buf jmpbuf;
+
+static const char* zf_abort_buf;
+const char* zf_abort_get_buf()
+{
+	return zf_abort_buf;
+}
 
 /* User variables are variables which are shared between forth and C. From
  * forth these can be accessed with @ and ! at pseudo-indices in low memory, in
@@ -160,8 +166,9 @@ static const char *op_name(zf_addr addr) { return NULL; }
  * zf_eval()
  */
 
-void zf_abort(zf_result reason)
+void zf_abort(zf_result reason, const char* buf)
 {
+	zf_abort_buf = buf;
 	longjmp(jmpbuf, reason);
 }
 
@@ -297,7 +304,7 @@ static zf_addr dict_put_cell_typed(zf_addr addr, zf_cell v, zf_mem_size size)
 	PUT(ZF_MEM_SIZE_S16, int16_t, vi);
 	PUT(ZF_MEM_SIZE_S32, int32_t, vi);
 
-	zf_abort(ZF_ABORT_INVALID_SIZE);
+	zf_abort(ZF_ABORT_INVALID_SIZE, NULL);
 	return 0;
 }
 
@@ -330,7 +337,7 @@ static zf_addr dict_get_cell_typed(zf_addr addr, zf_cell *v, zf_mem_size size)
 	GET(ZF_MEM_SIZE_S16, int16_t);
 	GET(ZF_MEM_SIZE_S32, int32_t);
 
-	zf_abort(ZF_ABORT_INVALID_SIZE);
+	zf_abort(ZF_ABORT_INVALID_SIZE, NULL);
 	return 0;
 }
 
@@ -637,7 +644,7 @@ static void do_prim(zf_prim op, const char *input)
 
 		case PRIM_DIV:
 			if((d2 = zf_pop()) == 0) {
-				zf_abort(ZF_ABORT_DIVISION_BY_ZERO);
+				zf_abort(ZF_ABORT_DIVISION_BY_ZERO, NULL);
 			}
 			d1 = zf_pop();
 			zf_push(d1 / d2);
@@ -645,7 +652,7 @@ static void do_prim(zf_prim op, const char *input)
 
 		case PRIM_MOD:
 			if((int)(d2 = zf_pop()) == 0) {
-				zf_abort(ZF_ABORT_DIVISION_BY_ZERO);
+				zf_abort(ZF_ABORT_DIVISION_BY_ZERO, NULL);
 			}
 			d1 = zf_pop();
 			zf_push((int)d1 % (int)d2);
@@ -678,7 +685,7 @@ static void do_prim(zf_prim op, const char *input)
 			else {
 				if (input) {
 					if (find_word(input,&addr,&len)) zf_push(len);
-					else zf_abort(ZF_ABORT_INTERNAL_ERROR);
+					else zf_abort(ZF_ABORT_NOT_A_WORD, input);
 				}
 				else input_state = ZF_INPUT_PASS_WORD;
 			}
@@ -747,7 +754,7 @@ static void do_prim(zf_prim op, const char *input)
 			break;
 
 		default:
-			zf_abort(ZF_ABORT_INTERNAL_ERROR);
+			zf_abort(ZF_ABORT_INTERNAL_ERROR, input);
 			break;
 	}
 }

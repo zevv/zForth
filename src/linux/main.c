@@ -39,13 +39,17 @@ zf_result do_eval(const char *src, int line, const char *buf)
 		case ZF_ABORT_COMPILE_ONLY_WORD: msg = "compile-only word"; break;
 		case ZF_ABORT_INVALID_SIZE: msg = "invalid size"; break;
 		case ZF_ABORT_DIVISION_BY_ZERO: msg = "division by zero"; break;
+		case ZF_ABORT_INVALID_USERVAR: msg = "invalid user variable"; break;
 		default: msg = "unknown error";
 	}
 
 	if(msg) {
 		fprintf(stderr, "\033[31m");
 		if(src) fprintf(stderr, "%s:%d: ", src, line);
-		fprintf(stderr, "%s\033[0m\n", msg);
+		fprintf(stderr, "%s", msg);
+		const char* abort_buf = zf_abort_get_buf ();
+		if(abort_buf) fprintf(stderr, ": %s", abort_buf);
+		fprintf(stderr, "\033[0m\n");
 	}
 
 	return rv;
@@ -131,7 +135,7 @@ zf_input_state zf_host_sys(zf_syscall_id id, const char *input)
 			zf_cell len = zf_pop();
 			zf_cell addr = zf_pop();
 			if(addr >= ZF_DICT_SIZE - len) {
-				zf_abort(ZF_ABORT_OUTSIDE_MEM);
+				zf_abort(ZF_ABORT_OUTSIDE_MEM, NULL);
 			}
 			void *buf = (uint8_t *)zf_dump(NULL) + (int)addr;
 			(void)fwrite(buf, 1, len, stdout);
@@ -192,7 +196,7 @@ zf_cell zf_host_parse_num(const char *buf)
 	int n = 0;
 	int r = sscanf(buf, ZF_SCAN_FMT"%n", &v, &n);
 	if(r != 1 || buf[n] != '\0') {
-		zf_abort(ZF_ABORT_NOT_A_WORD);
+		zf_abort(ZF_ABORT_NOT_A_WORD, buf);
 	}
 	return v;
 }

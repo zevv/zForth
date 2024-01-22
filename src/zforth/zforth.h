@@ -63,7 +63,8 @@ void zf_init(int trace);
 void zf_bootstrap(void);
 void *zf_dump(size_t *len);
 zf_result zf_eval(const char *buf);
-void zf_abort(zf_result reason);
+void zf_abort(zf_result reason, const char* abort_buf);
+const char* zf_abort_get_buf();
 
 void zf_push(zf_cell v);
 zf_cell zf_pop(void);
