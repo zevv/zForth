@@ -207,6 +207,7 @@ void usage(void)
 		"   -h         show help\n"
 		"   -t         enable tracing\n"
 		"   -l FILE    load dictionary from FILE\n"
+		"   -q         quiet\n"
 	);
 }
 
@@ -221,11 +222,12 @@ int main(int argc, char **argv)
 	int c;
 	int trace = 0;
 	int line = 0;
+	int quiet = 0;
 	const char *fname_load = NULL;
 
 	/* Parse command line options */
 
-	while((c = getopt(argc, argv, "hl:t")) != -1) {
+	while((c = getopt(argc, argv, "hl:tq")) != -1) {
 		switch(c) {
 			case 't':
 				trace = 1;
@@ -236,6 +238,9 @@ int main(int argc, char **argv)
 			case 'h':
 				usage();
 				exit(0);
+			case 'q':
+				quiet = 1;
+				break;
 		}
 	}
 	
@@ -264,6 +269,11 @@ int main(int argc, char **argv)
 		include(argv[i]);
 	}
 
+	if(!quiet) {
+		zf_cell here;
+		zf_uservar_get(ZF_USERVAR_HERE, &here);
+		printf("Welcome to zForth, %d bytes used\n", (int)here);
+	}
 
 	/* Interactive interpreter: read a line using readline library,
 	 * and pass to zf_eval() for evaluation*/
