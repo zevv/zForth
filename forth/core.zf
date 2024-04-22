@@ -10,13 +10,21 @@
 : save    131 sys ;
 
 
-( dictionary access. These are shortcuts through the primitive operations are !!, @@ and ,, )
+( dictionary access for regular variable-length cells. These are shortcuts
+  through the primitive operations are !!, @@ and ,, )
 
 : !    0 !! ;
 : @    0 @@ ;
 : ,    0 ,, ;
 : #    0 ## ;
 
+( dictionary access for jmp instructions; these make sure to always use the
+  maximium cell size for the target address to allow safe stubbing and
+  updating of a jump address. `64` is the magic number for ZF_ACCESS_VAR_MAX,
+  see zforth.c for details )
+
+: !j	 64 !! ;
+: ,j	 64 ,, ;
 
 ( compiler state )
 
@@ -73,12 +81,15 @@
 : times ( XT n -- ) { >r dup >r exe r> r> dup x} drop drop ;
 
 
-( 'if' prepares conditional jump, address will be filled in by 'else' or 'fi' )
+( 'if' prepares conditional jump, the target address '0' will later be
+  overwritten by the 'else' or 'fi' words. Note that ,j and !j are used for
+  writing the jump target address to the dictionary, this makes sure that the
+  target address is always written with the same cell size)
 
-: if      ' jmp0 , here 999 , ; immediate
+: if      ' jmp0 , here 0 ,j ; immediate
 : unless  ' not , postpone if ; immediate
-: else    ' jmp , here 999 , swap here swap ! ; immediate
-: fi      here swap ! ; immediate
+: else    ' jmp , here 0 ,j swap here swap !j ; immediate
+: fi      here swap !j ; immediate
 
 
 ( forth style 'do' and 'loop', including loop iterators 'i' and 'j' )

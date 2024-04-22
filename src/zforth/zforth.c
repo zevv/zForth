@@ -22,6 +22,17 @@
 #define CHECK(exp, abort)
 #endif
 
+typedef enum {
+	ZF_MEM_SIZE_VAR = 0,      /* Variable size encoding, 1, 2 or 1+sizeof(zf_cell) bytes */
+	ZF_MEM_SIZE_CELL = 1,     /* sizeof(zf_cell) bytes */
+	ZF_MEM_SIZE_U8 = 2,
+	ZF_MEM_SIZE_U16 = 3,
+	ZF_MEM_SIZE_U32 = 4,
+	ZF_MEM_SIZE_S8 = 5,
+	ZF_MEM_SIZE_S16 = 6,
+	ZF_MEM_SIZE_S32 = 7,
+	ZF_MEM_SIZE_VAR_MAX = 64, /* Variable size encoding, 1+sizeof(zf_cell) bytes */
+} zf_mem_size;
 
 /* Define all primitives, make sure the two tables below always match.  The
  * names are defined as a \0 separated list, terminated by double \0. This
@@ -30,17 +41,6 @@
  * in the dictionary. */
 
 #define _(s) s "\0"
-
-typedef enum {
-	ZF_MEM_SIZE_VAR,
-	ZF_MEM_SIZE_CELL,
-	ZF_MEM_SIZE_U8,
-	ZF_MEM_SIZE_U16,
-	ZF_MEM_SIZE_U32,
-	ZF_MEM_SIZE_S8,
-	ZF_MEM_SIZE_S16,
-	ZF_MEM_SIZE_S32
-} zf_mem_size;
 
 typedef enum {
 	PRIM_EXIT,    PRIM_LIT,       PRIM_LTZ,  PRIM_COL,     PRIM_SEMICOL,  PRIM_ADD,
@@ -282,7 +282,9 @@ static zf_addr dict_put_cell_typed(zf_addr addr, zf_cell v, zf_mem_size size)
 				return dict_put_bytes(addr, t, sizeof(t));
 			}
 		}
+	}
 
+	if(size == ZF_MEM_SIZE_VAR || size == ZF_MEM_SIZE_VAR_MAX) {
 		trace(" ⁵");
 		t[0] = 0xff;
 		return dict_put_bytes(addr+0, t, 1) + 
