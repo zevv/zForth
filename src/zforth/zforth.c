@@ -727,25 +727,25 @@ static void do_prim(zf_prim op, const char *input)
 			break;
 		
 		case PRIM_AND:
-			zf_push((int)zf_pop() & (int)zf_pop());
+			zf_push((zf_int)zf_pop() & (zf_int)zf_pop());
 			break;
 
 		case PRIM_OR:
-			zf_push((int)zf_pop() | (int)zf_pop());
+			zf_push((zf_int)zf_pop() | (zf_int)zf_pop());
 			break;
 
 		case PRIM_XOR:
-			zf_push((int)zf_pop() ^ (int)zf_pop());
+			zf_push((zf_int)zf_pop() ^ (zf_int)zf_pop());
 			break;
 
 		case PRIM_SHL:
 			d1 = zf_pop();
-			zf_push((int)zf_pop() << (int)d1);
+			zf_push((zf_int)zf_pop() << (zf_int)d1);
 			break;
 
 		case PRIM_SHR:
 			d1 = zf_pop();
-			zf_push((int)zf_pop() >> (int)d1);
+			zf_push((zf_int)zf_pop() >> (zf_int)d1);
 			break;
 
 		default:

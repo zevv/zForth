@@ -40,6 +40,9 @@ typedef int32_t zf_cell;
 #define ZF_CELL_FMT "%ld"
 #define ZF_SCAN_FMT "%ld"
 
+/* zf_int use for bitops, some arch int type width is less than register width,
+   it will cause sign fill, so we need manual specify it */
+typedef int zf_int;
 
 /* The type to use for pointers and adresses. 'unsigned int' is usually a good
  * choice for best performance and smallest code size */
