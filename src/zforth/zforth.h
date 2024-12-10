@@ -9,6 +9,7 @@ extern "C"
 #include <stddef.h>
 #include <stdarg.h>
 #include <stdint.h>
+#include <setjmp.h>
 
 #include "zfconf.h"
 
@@ -56,27 +57,44 @@ typedef enum {
 } zf_uservar_id;
 
 
+typedef struct {
+	/* Stacks and dictionary memory */
+	zf_cell rstack[ZF_RSTACK_SIZE];
+	zf_cell dstack[ZF_DSTACK_SIZE];
+	uint8_t dict[ZF_DICT_SIZE];
+
+	/* State and stack and interpreter pointers */
+	zf_input_state input_state;
+	zf_addr ip;
+
+	/* setjmp env for handling aborts */
+	jmp_buf jmpbuf;
+
+	zf_addr *uservar;
+} zf_ctx;
+
+
 /* ZForth API functions */
 
 
-void zf_init(int trace);
-void zf_bootstrap(void);
-void *zf_dump(size_t *len);
-zf_result zf_eval(const char *buf);
-void zf_abort(zf_result reason);
+void zf_init(zf_ctx *ctx, int trace);
+void zf_bootstrap(zf_ctx *ctx);
+void *zf_dump(zf_ctx *ctx, size_t *len);
+zf_result zf_eval(zf_ctx *ctx, const char *buf);
+void zf_abort(zf_ctx *ctx, zf_result reason);
 
-void zf_push(zf_cell v);
-zf_cell zf_pop(void);
-zf_cell zf_pick(zf_addr n);
+void zf_push(zf_ctx *ctx, zf_cell v);
+zf_cell zf_pop(zf_ctx *ctx);
+zf_cell zf_pick(zf_ctx *ctx, zf_addr n);
 
-zf_result zf_uservar_set(zf_uservar_id uv, zf_cell v);
-zf_result zf_uservar_get(zf_uservar_id uv, zf_cell *v);
+zf_result zf_uservar_set(zf_ctx *ctx, zf_uservar_id uv, zf_cell v);
+zf_result zf_uservar_get(zf_ctx *ctx, zf_uservar_id uv, zf_cell *v);
 
 /* Host provides these functions */
 
-zf_input_state zf_host_sys(zf_syscall_id id, const char *last_word);
-void zf_host_trace(const char *fmt, va_list va);
-zf_cell zf_host_parse_num(const char *buf);
+zf_input_state zf_host_sys(zf_ctx *ctx, zf_syscall_id id, const char *last_word);
+void zf_host_trace(zf_ctx *ctx, const char *fmt, va_list va);
+zf_cell zf_host_parse_num(zf_ctx *ctx, const char *buf);
 
 #ifdef __cplusplus
 }

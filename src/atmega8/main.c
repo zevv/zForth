@@ -31,12 +31,14 @@ int main(void)
 	uart_init(UART_BAUD(9600));
 	stdout = stdin = &f;
 
+	zf_ctx _ctx;
+	zf_ctx *ctx = &_ctx;
 
 	/* Initialize zforth */
 
-	zf_init(1);
-	zf_bootstrap();
-	zf_eval(": . 1 sys ;");
+	zf_init(ctx, 1);
+	zf_bootstrap(ctx);
+	zf_eval(ctx, ": . 1 sys ;");
 
 
 	/* Main loop: read words and eval */
@@ -47,7 +49,7 @@ int main(void)
 		int c = getchar();
 		putchar(c);
 		if(c == 10 || c == 13 || c == 32) {
-			zf_result r = zf_eval(buf);
+			zf_result r = zf_eval(ctx, buf);
 			if(r != ZF_OK) puts("A");
 			l = 0;
 		} else if(l < sizeof(buf)-1) {
@@ -60,19 +62,19 @@ int main(void)
 }
 
 
-zf_input_state zf_host_sys(zf_syscall_id id, const char *input)
+zf_input_state zf_host_sys(zf_ctx *ctx, zf_syscall_id id, const char *input)
 {
 	char buf[16];
 
 	switch((int)id) {
 
 		case ZF_SYSCALL_EMIT:
-			putchar((char)zf_pop());
+			putchar((char)zf_pop(ctx));
 			fflush(stdout);
 			break;
 
 		case ZF_SYSCALL_PRINT:
-			itoa(zf_pop(), buf, 10);
+			itoa(zf_pop(ctx), buf, 10);
 			puts(buf);
 			break;
 	}
@@ -81,12 +83,12 @@ zf_input_state zf_host_sys(zf_syscall_id id, const char *input)
 }
 
 
-zf_cell zf_host_parse_num(const char *buf)
+zf_cell zf_host_parse_num(zf_ctx *ctx, const char *buf)
 {
 	char *end;
         zf_cell v = strtol(buf, &end, 0);
 	if(*end != '\0') {
-                zf_abort(ZF_ABORT_NOT_A_WORD);
+                zf_abort(ctx, ZF_ABORT_NOT_A_WORD);
         }
         return v;
 }
