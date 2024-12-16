@@ -1,0 +1,48 @@
+name: ClusterFuzzLite periodic tasks
+
+on:
+  schedule:
+    - cron: "0 0 * * 0"
+
+permissions: read-all
+
+jobs:
+  pruning:
+    name: Fuzz corpus pruning
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Build Fuzzers (${{ matrix.sanitizer }})
+        uses: google/clusterfuzzlite/actions/build_fuzzers@v1
+        with:
+          language: c
+          github-token: ${{ github.token }}
+
+      - name: Run Fuzzers (${{ matrix.sanitizer }})
+        uses: google/clusterfuzzlite/actions/run_fuzzers@v1
+        with:
+          github-token: ${{ github.token }}
+          fuzz-seconds: 600
+          mode: "prune"
+          output-sarif: true
+
+  coverage:
+    name: Generate fuzzing coverage
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Build Fuzzers (${{ matrix.sanitizer }})
+        uses: google/clusterfuzzlite/actions/build_fuzzers@v1
+        with:
+          language: c
+          github-token: ${{ github.token }}
+          sanitizer: coverage
+
+      - name: Run Fuzzers (${{ matrix.sanitizer }})
+        uses: google/clusterfuzzlite/actions/run_fuzzers@v1
+        with:
+          github-token: ${{ github.token }}
+          fuzz-seconds: 600
+          mode: coverage
+          sanitizer: coverage
+          output-sarif: true
