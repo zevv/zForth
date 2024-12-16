@@ -1,0 +1,37 @@
+name: CodeQL
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+  schedule:
+    - cron: 0 0 * * 1
+
+jobs:
+  analyze:
+    name: CodeQL Analyze
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: sudo apt-get install -y --no-install-recommends libreadline-dev
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: c-cpp
+          queries: security-and-quality
+          build-mode: manual
+
+      - name: Build zForth
+        run: make
+
+      - name: CodeQL Analyze
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:c-cpp"
