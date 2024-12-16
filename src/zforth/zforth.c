@@ -459,7 +459,7 @@ static void run(zf_ctx *ctx, const char *input)
 		
 		ctx->ip += l;
 
-		if(code <= PRIM_COUNT) {
+		if(code < PRIM_COUNT) {
 			do_prim(ctx, (zf_prim)code, input);
 
 			/* If the prim requests input, restore IP so that the
