@@ -543,8 +543,7 @@ static void do_prim(zf_ctx *ctx, zf_prim op, const char *input)
 
 		case PRIM_LTZ:
 			/* Push true if less than zero, else false */
-			if(zf_pop(ctx) < 0) zf_push(ctx, ZF_TRUE);
-			else                zf_push(ctx, ZF_FALSE);
+			zf_push(ctx, zf_pop(ctx) < 0 ? ZF_TRUE : ZF_FALSE);
 			break;
 
 		case PRIM_SEMICOL:
@@ -743,8 +742,7 @@ static void do_prim(zf_ctx *ctx, zf_prim op, const char *input)
 
 		case PRIM_EQUAL:
 			/* Push true if top two elements on stack are equal, else false */
-			if(zf_pop(ctx) == zf_pop(ctx)) zf_push(ctx, ZF_TRUE);
-			else                           zf_push(ctx, ZF_FALSE);
+			zf_push(ctx, zf_pop(ctx) == zf_pop(ctx) ? ZF_TRUE : ZF_FALSE);
 			break;
 
 		case PRIM_KEY:
