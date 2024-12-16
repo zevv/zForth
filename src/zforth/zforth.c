@@ -49,6 +49,7 @@ typedef enum {
 	PRIM_JMP,     PRIM_JMP0,      PRIM_TICK, PRIM_COMMENT, PRIM_PUSHR,    PRIM_POPR,
 	PRIM_EQUAL,   PRIM_SYS,       PRIM_PICK, PRIM_COMMA,   PRIM_KEY,      PRIM_LITS,
 	PRIM_LEN,     PRIM_AND,       PRIM_OR,   PRIM_XOR,     PRIM_SHL,      PRIM_SHR,
+	PRIM_LITERAL,
 	PRIM_COUNT
 } zf_prim;
 
@@ -58,7 +59,8 @@ static const char prim_names[] =
 	_("pickr")   _("_immediate") _("@@")    _("!!")    _("swap")      _("rot")
 	_("jmp")     _("jmp0")       _("'")     _("_(")    _(">r")        _("r>")
 	_("=")       _("sys")        _("pick")  _(",,")    _("key")       _("lits")
-	_("##")      _("&")          _("|")     _("^")     _("<<")        _(">>");
+	_("##")      _("&")          _("|")     _("^")     _("<<")        _(">>")
+	_("_literal");
 
 
 /* User variables are variables which are shared between forth and C. From
@@ -550,6 +552,14 @@ static void do_prim(zf_ctx *ctx, zf_prim op, const char *input)
 			dict_add_op(ctx, PRIM_EXIT);
 			trace(ctx, "\n===");
 			COMPILING(ctx) = 0;
+			break;
+
+		case PRIM_LITERAL:
+			/* At compile time, compiles a value from the stack into the
+			 * definition as a literal. At run time, the value will be pushed
+			 * on the stack. */
+			if(COMPILING(ctx)) dict_add_lit(ctx, zf_pop(ctx));
+			/* FIXME: else abort "!compiling"? */
 			break;
 
 		case PRIM_LIT:
