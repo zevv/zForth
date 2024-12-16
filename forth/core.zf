@@ -58,6 +58,8 @@
 : allot  h +!  ;
 : var : ' lit , here 5 allot here swap ! 5 allot postpone ; ;
 : const : ' lit , , postpone ; ;
+: constant >r : r> postpone literal postpone ; ;
+: variable >r here r> postpone , constant ;
 
 ( 'begin' gets the current address, a jump or conditional jump back is generated
   by 'again', 'until' )

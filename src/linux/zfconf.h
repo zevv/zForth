@@ -44,7 +44,11 @@ typedef float zf_cell;
    it will cause sign fill, so we need manual specify it */
 typedef int zf_int;
 
-/* The type to use for pointers and adresses. 'unsigned int' is usually a good
+/* True is defined as the bitwise complement of false. */
+#define ZF_FALSE ((zf_cell)0)
+#define ZF_TRUE ((zf_cell)~(zf_int)ZF_FALSE)
+
+/* The type to use for pointers and addresses. 'unsigned int' is usually a good
  * choice for best performance and smallest code size */
 
 typedef unsigned int zf_addr;

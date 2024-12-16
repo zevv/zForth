@@ -49,6 +49,7 @@ typedef enum {
 	PRIM_JMP,     PRIM_JMP0,      PRIM_TICK, PRIM_COMMENT, PRIM_PUSHR,    PRIM_POPR,
 	PRIM_EQUAL,   PRIM_SYS,       PRIM_PICK, PRIM_COMMA,   PRIM_KEY,      PRIM_LITS,
 	PRIM_LEN,     PRIM_AND,       PRIM_OR,   PRIM_XOR,     PRIM_SHL,      PRIM_SHR,
+	PRIM_LITERAL,
 	PRIM_COUNT
 } zf_prim;
 
@@ -58,7 +59,8 @@ static const char prim_names[] =
 	_("pickr")   _("_immediate") _("@@")    _("!!")    _("swap")      _("rot")
 	_("jmp")     _("jmp0")       _("'")     _("_(")    _(">r")        _("r>")
 	_("=")       _("sys")        _("pick")  _(",,")    _("key")       _("lits")
-	_("##")      _("&")          _("|")     _("^")     _("<<")        _(">>");
+	_("##")      _("&")          _("|")     _("^")     _("<<")        _(">>")
+	_("_literal");
 
 
 /* User variables are variables which are shared between forth and C. From
@@ -288,6 +290,10 @@ static zf_addr dict_put_cell_typed(zf_ctx *ctx, zf_addr addr, zf_cell v, zf_mem_
 }
 
 
+/* 
+ * Get cell from dictionary memory, with specified cell size encoding;
+ * returns the number of bytes read
+ */
 static zf_addr dict_get_cell_typed(zf_ctx *ctx, zf_addr addr, zf_cell *v, zf_mem_size size)
 {
 	uint8_t t[2];
@@ -455,7 +461,7 @@ static void run(zf_ctx *ctx, const char *input)
 		
 		ctx->ip += l;
 
-		if(code <= PRIM_COUNT) {
+		if(code < PRIM_COUNT) {
 			do_prim(ctx, (zf_prim)code, input);
 
 			/* If the prim requests input, restore IP so that the
@@ -493,13 +499,19 @@ static void execute(zf_ctx *ctx, zf_addr addr)
 }
 
 
-static zf_addr peek(zf_ctx *ctx, zf_addr addr, zf_cell *val, int len)
+/* 
+ * Peek at memory, either user variables or dictionary memory,
+ * returns number of bytes read
+ */
+static zf_addr peek(zf_ctx *ctx, zf_addr addr, zf_cell *val, zf_mem_size size)
 {
 	if(addr < ZF_USERVAR_COUNT) {
+		/* Special case for user variables */
 		*val = ctx->uservar[addr];
 		return 1;
 	} else {
-		return dict_get_cell_typed(ctx, addr, val, (zf_mem_size)len);
+		/* General case for dictionary memory */
+		return dict_get_cell_typed(ctx, addr, val, size);
 	}
 
 }
@@ -512,13 +524,15 @@ static zf_addr peek(zf_ctx *ctx, zf_addr addr, zf_cell *val, int len)
 static void do_prim(zf_ctx *ctx, zf_prim op, const char *input)
 {
 	zf_cell d1, d2, d3;
-	zf_addr addr, len;
+	zf_addr addr, code;
+	zf_mem_size size;
 
 	trace(ctx, "(%s) ", op_name(ctx, op));
 
 	switch(op) {
 
 		case PRIM_COL:
+			/* Start of word definition */
 			if(input == NULL) {
 				ctx->input_state = ZF_INPUT_PASS_WORD;
 			} else {
@@ -528,73 +542,95 @@ static void do_prim(zf_ctx *ctx, zf_prim op, const char *input)
 			break;
 
 		case PRIM_LTZ:
-			zf_push(ctx, zf_pop(ctx) < 0);
+			/* Push true if less than zero, else false */
+			if(zf_pop(ctx) < 0) zf_push(ctx, ZF_TRUE);
+			else                zf_push(ctx, ZF_FALSE);
 			break;
 
 		case PRIM_SEMICOL:
+			/* End of word definition */
 			dict_add_op(ctx, PRIM_EXIT);
 			trace(ctx, "\n===");
 			COMPILING(ctx) = 0;
 			break;
 
+		case PRIM_LITERAL:
+			/* At compile time, compiles a value from the stack into the
+			 * definition as a literal. At run time, the value will be pushed
+			 * on the stack. */
+			if(COMPILING(ctx)) dict_add_lit(ctx, zf_pop(ctx));
+			/* FIXME: else abort "!compiling"? */
+			break;
+
 		case PRIM_LIT:
+			/* At run time, push next value from dictionary on stack */
 			ctx->ip += dict_get_cell(ctx, ctx->ip, &d1);
 			zf_push(ctx, d1);
 			break;
 
 		case PRIM_EXIT:
+			/* Return from word */
 			ctx->ip = zf_popr(ctx);
 			break;
 		
 		case PRIM_LEN:
-			len = zf_pop(ctx);
+			/* Get length of cell; consumes size encoding and address */
+			size = zf_pop(ctx);
 			addr = zf_pop(ctx);
-			zf_push(ctx, peek(ctx, addr, &d1, len));
+			zf_push(ctx, peek(ctx, addr, &d1, size));
 			break;
 
 		case PRIM_PEEK:
-			len = zf_pop(ctx);
+			/* Peek at memory; consumes size encoding and address */
+			size = zf_pop(ctx);
 			addr = zf_pop(ctx);
-			peek(ctx, addr, &d1, len);
+			peek(ctx, addr, &d1, size);
 			zf_push(ctx, d1);
 			break;
 
 		case PRIM_POKE:
-			d2 = zf_pop(ctx);
+			/* Poke memory; consumes size encoding, address, and value */
+			size = zf_pop(ctx);
 			addr = zf_pop(ctx);
 			d1 = zf_pop(ctx);
 			if(addr < ZF_USERVAR_COUNT) {
 				ctx->uservar[addr] = d1;
-				break;
+			} else {
+				dict_put_cell_typed(ctx, addr, d1, size);
 			}
-			dict_put_cell_typed(ctx, addr, d1, (zf_mem_size)d2);
 			break;
 
 		case PRIM_SWAP:
+			/* Swap top two elements on stack */
 			d1 = zf_pop(ctx); d2 = zf_pop(ctx);
 			zf_push(ctx, d1); zf_push(ctx, d2);
 			break;
 
 		case PRIM_ROT:
+			/* Rotate top three elements on stack */
 			d1 = zf_pop(ctx); d2 = zf_pop(ctx); d3 = zf_pop(ctx);
 			zf_push(ctx, d2); zf_push(ctx, d1); zf_push(ctx, d3);
 			break;
 
 		case PRIM_DROP:
+			/* Drop top element from stack */
 			zf_pop(ctx);
 			break;
 
 		case PRIM_DUP:
+			/* Duplicate top element on stack */
 			d1 = zf_pop(ctx);
 			zf_push(ctx, d1); zf_push(ctx, d1);
 			break;
 
 		case PRIM_ADD:
+			/* Pop and add top two elements on stack */
 			d1 = zf_pop(ctx); d2 = zf_pop(ctx);
 			zf_push(ctx, d1 + d2);
 			break;
 
 		case PRIM_SYS:
+			/* Perform host system call */
 			d1 = zf_pop(ctx);
 			ctx->input_state = zf_host_sys(ctx, (zf_syscall_id)d1, input);
 			if(ctx->input_state != ZF_INPUT_INTERPRET) {
@@ -603,25 +639,30 @@ static void do_prim(zf_ctx *ctx, zf_prim op, const char *input)
 			break;
 
 		case PRIM_PICK:
+			/* Pick n-th element from stack */
 			addr = zf_pop(ctx);
 			zf_push(ctx, zf_pick(ctx, addr));
 			break;
 		
 		case PRIM_PICKR:
+			/* Pick n-th element from return stack */
 			addr = zf_pop(ctx);
 			zf_push(ctx, zf_pickr(ctx, addr));
 			break;
 
 		case PRIM_SUB:
+			/* Subtract top element on stack from next element */
 			d1 = zf_pop(ctx); d2 = zf_pop(ctx);
 			zf_push(ctx, d2 - d1);
 			break;
 
 		case PRIM_MUL:
+			/* Multiply top two elements on stack */
 			zf_push(ctx, zf_pop(ctx) * zf_pop(ctx));
 			break;
 
 		case PRIM_DIV:
+			/* Divide next element on stack by top element */
 			if((d2 = zf_pop(ctx)) == 0) {
 				zf_abort(ctx, ZF_ABORT_DIVISION_BY_ZERO);
 			}
@@ -630,6 +671,7 @@ static void do_prim(zf_ctx *ctx, zf_prim op, const char *input)
 			break;
 
 		case PRIM_MOD:
+			/* Modulo next element on stack by top element */
 			if((int)(d2 = zf_pop(ctx)) == 0) {
 				zf_abort(ctx, ZF_ABORT_DIVISION_BY_ZERO);
 			}
@@ -638,16 +680,19 @@ static void do_prim(zf_ctx *ctx, zf_prim op, const char *input)
 			break;
 
 		case PRIM_IMMEDIATE:
+			/* Set immediate flag in next word */
 			make_immediate(ctx);
 			break;
 
 		case PRIM_JMP:
+			/* Jump to address */
 			ctx->ip += dict_get_cell(ctx, ctx->ip, &d1);
 			trace(ctx, "ip " ZF_ADDR_FMT "=>" ZF_ADDR_FMT, ctx->ip, (zf_addr)d1);
 			ctx->ip = d1;
 			break;
 
 		case PRIM_JMP0:
+			/* Jump to address if top of stack is zero */
 			ctx->ip += dict_get_cell(ctx, ctx->ip, &d1);
 			if(zf_pop(ctx) == 0) {
 				trace(ctx, "ip " ZF_ADDR_FMT "=>" ZF_ADDR_FMT, ctx->ip, (zf_addr)d1);
@@ -656,6 +701,7 @@ static void do_prim(zf_ctx *ctx, zf_prim op, const char *input)
 			break;
 
 		case PRIM_TICK:
+			/* Compile next word */
 			if (COMPILING(ctx)) {
 				ctx->ip += dict_get_cell(ctx, ctx->ip, &d1);
 				trace(ctx, "%s/", op_name(ctx, d1));
@@ -663,7 +709,7 @@ static void do_prim(zf_ctx *ctx, zf_prim op, const char *input)
 			}
 			else {
 				if (input) {
-					if (find_word(ctx, input,&addr,&len)) zf_push(ctx, len);
+					if (find_word(ctx, input,&addr,&code)) zf_push(ctx, code);
 					else zf_abort(ctx, ZF_ABORT_INTERNAL_ERROR);
 				}
 				else ctx->input_state = ZF_INPUT_PASS_WORD;
@@ -672,30 +718,37 @@ static void do_prim(zf_ctx *ctx, zf_prim op, const char *input)
 			break;
 
 		case PRIM_COMMA:
-			d2 = zf_pop(ctx);
+			/* Compile literal value; consumes size encoding, value */
+			size = zf_pop(ctx);
 			d1 = zf_pop(ctx);
-			dict_add_cell_typed(ctx, d1, (zf_mem_size)d2);
+			dict_add_cell_typed(ctx, d1, size);
 			break;
 
 		case PRIM_COMMENT:
+			/* Skip to matching ')' */
 			if(!input || input[0] != ')') {
 				ctx->input_state = ZF_INPUT_PASS_CHAR;
 			}
 			break;
 
 		case PRIM_PUSHR:
+			/* Push top of data stack to return stack */
 			zf_pushr(ctx, zf_pop(ctx));
 			break;
 
 		case PRIM_POPR:
+			/* Pop top of return stack to data stack */
 			zf_push(ctx, zf_popr(ctx));
 			break;
 
 		case PRIM_EQUAL:
-			zf_push(ctx, zf_pop(ctx) == zf_pop(ctx));
+			/* Push true if top two elements on stack are equal, else false */
+			if(zf_pop(ctx) == zf_pop(ctx)) zf_push(ctx, ZF_TRUE);
+			else                           zf_push(ctx, ZF_FALSE);
 			break;
 
 		case PRIM_KEY:
+			/* Get next character from input stream */
 			if(input == NULL) {
 				ctx->input_state = ZF_INPUT_PASS_CHAR;
 			} else {
@@ -704,6 +757,7 @@ static void do_prim(zf_ctx *ctx, zf_prim op, const char *input)
 			break;
 
 		case PRIM_LITS:
+			/* Literal string */
 			ctx->ip += dict_get_cell(ctx, ctx->ip, &d1);
 			zf_push(ctx, ctx->ip);
 			zf_push(ctx, d1);
@@ -711,23 +765,28 @@ static void do_prim(zf_ctx *ctx, zf_prim op, const char *input)
 			break;
 		
 		case PRIM_AND:
+			/* Bitwise AND of top two elements on stack */
 			zf_push(ctx, (zf_int)zf_pop(ctx) & (zf_int)zf_pop(ctx));
 			break;
 
 		case PRIM_OR:
+			/* Bitwise OR of top two elements on stack */
 			zf_push(ctx, (zf_int)zf_pop(ctx) | (zf_int)zf_pop(ctx));
 			break;
 
 		case PRIM_XOR:
+			/* Bitwise XOR of top two elements on stack */
 			zf_push(ctx, (zf_int)zf_pop(ctx) ^ (zf_int)zf_pop(ctx));
 			break;
 
 		case PRIM_SHL:
+			/* Shift left of next element by top element */
 			d1 = zf_pop(ctx);
 			zf_push(ctx, (zf_int)zf_pop(ctx) << (zf_int)d1);
 			break;
 
 		case PRIM_SHR:
+			/* Shift right of next element by top element */
 			d1 = zf_pop(ctx);
 			zf_push(ctx, (zf_int)zf_pop(ctx) >> (zf_int)d1);
 			break;
