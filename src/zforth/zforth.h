@@ -74,8 +74,12 @@ typedef struct {
 } zf_ctx;
 
 
-/* ZForth API functions */
+/* True is defined as the bitwise complement of false. */
 
+#define ZF_FALSE ((zf_cell)0)
+#define ZF_TRUE ((zf_cell)~(zf_int)ZF_FALSE)
+
+/* ZForth API functions */
 
 void zf_init(zf_ctx *ctx, int trace);
 void zf_bootstrap(zf_ctx *ctx);
