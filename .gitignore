@@ -4,5 +4,6 @@ go
 *.swp
 *.swo
 zforth
+zforth_fuzzer
 zforth.save
 .zforth.hist

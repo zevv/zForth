@@ -1,0 +1,45 @@
+name: ClusterFuzzLite PR fuzzing
+
+on:
+  pull_request:
+    paths:
+      - "**"
+
+permissions: read-all
+
+jobs:
+  fuzz:
+    name: Fuzz test PR
+    runs-on: ubuntu-latest
+    concurrency:
+      group: ${{ github.workflows }}-${{ matrix.sanitizer }}-${{ github.ref }}
+      cancel-in-progress: true
+
+    strategy:
+      fail-fast: false
+      matrix:
+        sanitizer:
+          - address
+
+          # XXX: UBSan fails due to SHR operator being able to exceed word size
+          # - undefined
+
+          # FIXME: MSan fail due to zf_ctx not being fully initialized by zf_init
+          # - memory
+
+    steps:
+      - name: Build Fuzzers (${{ matrix.sanitizer }})
+        uses: google/clusterfuzzlite/actions/build_fuzzers@v1
+        with:
+          language: c
+          github-token: ${{ github.token }}
+          sanitizer: ${{ matrix.sanitizer }}
+
+      - name: Run Fuzzers (${{ matrix.sanitizer }})
+        uses: google/clusterfuzzlite/actions/run_fuzzers@v1
+        with:
+          github-token: ${{ github.token }}
+          fuzz-seconds: 300
+          mode: code-change
+          parallel-fuzzing: true
+          output-sarif: true
