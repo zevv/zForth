@@ -305,7 +305,7 @@ int main(int argc, char **argv)
 	for(;;) {
 		char buf[4096];
 		if(fgets(buf, sizeof(buf), stdin)) {
-			do_eval("stdin", ++line, buf);
+			do_eval(ctx, "stdin", ++line, buf);
 			printf("\n");
 		} else {
 			break;
