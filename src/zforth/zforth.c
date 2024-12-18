@@ -17,9 +17,9 @@
  * is set to 0, the boundary check code will not be compiled in to reduce size */
 
 #if ZF_ENABLE_BOUNDARY_CHECKS
-#define CHECK(exp, abort) if(!(exp)) zf_abort(abort);
+#define CHECK(ctx, exp, abort) if(!(exp)) zf_abort(ctx, abort);
 #else
-#define CHECK(exp, abort)
+#define CHECK(ctx, exp, abort)
 #endif
 
 typedef enum {
@@ -49,6 +49,7 @@ typedef enum {
 	PRIM_JMP,     PRIM_JMP0,      PRIM_TICK, PRIM_COMMENT, PRIM_PUSHR,    PRIM_POPR,
 	PRIM_EQUAL,   PRIM_SYS,       PRIM_PICK, PRIM_COMMA,   PRIM_KEY,      PRIM_LITS,
 	PRIM_LEN,     PRIM_AND,       PRIM_OR,   PRIM_XOR,     PRIM_SHL,      PRIM_SHR,
+	PRIM_LITERAL,
 	PRIM_COUNT
 } zf_prim;
 
@@ -58,49 +59,34 @@ static const char prim_names[] =
 	_("pickr")   _("_immediate") _("@@")    _("!!")    _("swap")      _("rot")
 	_("jmp")     _("jmp0")       _("'")     _("_(")    _(">r")        _("r>")
 	_("=")       _("sys")        _("pick")  _(",,")    _("key")       _("lits")
-	_("##")      _("&")          _("|")     _("^")     _("<<")        _(">>");
+	_("##")      _("&")          _("|")     _("^")     _("<<")        _(">>")
+	_("_literal");
 
-
-/* Stacks and dictionary memory */
-
-static zf_cell rstack[ZF_RSTACK_SIZE];
-static zf_cell dstack[ZF_DSTACK_SIZE];
-static uint8_t dict[ZF_DICT_SIZE];
-
-/* State and stack and interpreter pointers */
-
-static zf_input_state input_state;
-static zf_addr ip;
-
-/* setjmp env for handling aborts */
-
-static jmp_buf jmpbuf;
 
 /* User variables are variables which are shared between forth and C. From
  * forth these can be accessed with @ and ! at pseudo-indices in low memory, in
  * C they are stored in an array of zf_addr with friendly reference names
  * through some macros */
 
-#define HERE      uservar[ZF_USERVAR_HERE]      /* compilation pointer in dictionary */
-#define LATEST    uservar[ZF_USERVAR_LATEST]    /* pointer to last compiled word */
-#define TRACE     uservar[ZF_USERVAR_TRACE]     /* trace enable flag */
-#define COMPILING uservar[ZF_USERVAR_COMPILING] /* compiling flag */
-#define POSTPONE  uservar[ZF_USERVAR_POSTPONE]  /* flag to indicate next imm word should be compiled */
-#define DSP       uservar[ZF_USERVAR_DSP]       /* data stack pointer */
-#define RSP	      uservar[ZF_USERVAR_RSP]       /* return stack pointer */
+#define HERE(ctx)      ctx->uservar[ZF_USERVAR_HERE]      /* compilation pointer in dictionary */
+#define LATEST(ctx)    ctx->uservar[ZF_USERVAR_LATEST]    /* pointer to last compiled word */
+#define TRACE(ctx)     ctx->uservar[ZF_USERVAR_TRACE]     /* trace enable flag */
+#define COMPILING(ctx) ctx->uservar[ZF_USERVAR_COMPILING] /* compiling flag */
+#define POSTPONE(ctx)  ctx->uservar[ZF_USERVAR_POSTPONE]  /* flag to indicate next imm word should be compiled */
+#define DSP(ctx)       ctx->uservar[ZF_USERVAR_DSP]       /* data stack pointer */
+#define RSP(ctx)       ctx->uservar[ZF_USERVAR_RSP]       /* return stack pointer */
 
 static const char uservar_names[] =
 	_("h")   _("latest") _("trace")  _("compiling")  _("_postpone")  _("dsp")
 	_("rsp");
 
-static zf_addr *uservar = (zf_addr *)dict;
 
 
 /* Prototypes */
 
-static void do_prim(zf_prim prim, const char *input);
-static zf_addr dict_get_cell(zf_addr addr, zf_cell *v);
-static void dict_get_bytes(zf_addr addr, void *buf, size_t len);
+static void do_prim(zf_ctx *ctx, zf_prim prim, const char *input);
+static zf_addr dict_get_cell(zf_ctx *ctx, zf_addr addr, zf_cell *v);
+static void dict_get_bytes(zf_ctx *ctx, zf_addr addr, void *buf, size_t len);
 
 
 /* Tracing functions. If disabled, the trace() function is replaced by an empty
@@ -109,37 +95,37 @@ static void dict_get_bytes(zf_addr addr, void *buf, size_t len);
 
 #if ZF_ENABLE_TRACE
 
-static void do_trace(const char *fmt, ...)
+static void do_trace(zf_ctx *ctx, const char *fmt, ...)
 {
-	if(TRACE) {
+	if(TRACE(ctx)) {
 		va_list va;
 		va_start(va, fmt);
-		zf_host_trace(fmt, va);
+		zf_host_trace(ctx, fmt, va);
 		va_end(va);
 	}
 }
 
-#define trace(...) if(TRACE) do_trace(__VA_ARGS__)
+#define trace(ctx, ...) if(TRACE(ctx)) do_trace(ctx, __VA_ARGS__)
 
-static const char *op_name(zf_addr addr)
+static const char *op_name(zf_ctx *ctx, zf_addr addr)
 {
-	zf_addr w = LATEST;
+	zf_addr w = LATEST(ctx);
 	static char name[32];
 
-	while(TRACE && w) {
+	while(TRACE(ctx) && w) {
 		zf_addr xt, p = w;
 		zf_cell d, link, op2;
 		int lenflags;
 
-		p += dict_get_cell(p, &d);
+		p += dict_get_cell(ctx, p, &d);
 		lenflags = d;
-		p += dict_get_cell(p, &link);
+		p += dict_get_cell(ctx, p, &link);
 		xt = p + ZF_FLAG_LEN(lenflags);
-		dict_get_cell(xt, &op2);
+		dict_get_cell(ctx, xt, &op2);
 
 		if(((lenflags & ZF_FLAG_PRIM) && addr == (zf_addr)op2) || addr == w || addr == xt) {
 			int l = ZF_FLAG_LEN(lenflags);
-			dict_get_bytes(p, name, l);
+			dict_get_bytes(ctx, p, name, l);
 			name[l] = '\0';
 			return name;
 		}
@@ -150,8 +136,8 @@ static const char *op_name(zf_addr addr)
 }
 
 #else
-static void trace(const char *fmt, ...) { }
-static const char *op_name(zf_addr addr) { return NULL; }
+static void trace(zf_ctx *ctx, const char *fmt, ...) { }
+static const char *op_name(zf_ctx *ctx, zf_addr addr) { return NULL; }
 #endif
 
 
@@ -160,9 +146,9 @@ static const char *op_name(zf_addr addr) { return NULL; }
  * zf_eval()
  */
 
-void zf_abort(zf_result reason)
+void zf_abort(zf_ctx *ctx, zf_result reason)
 {
-	longjmp(jmpbuf, reason);
+	longjmp(ctx->jmpbuf, reason);
 }
 
 
@@ -171,52 +157,52 @@ void zf_abort(zf_result reason)
  * Stack operations. 
  */
 
-void zf_push(zf_cell v)
+void zf_push(zf_ctx *ctx, zf_cell v)
 {
-	CHECK(DSP < ZF_DSTACK_SIZE, ZF_ABORT_DSTACK_OVERRUN);
-	trace("»" ZF_CELL_FMT " ", v);
-	dstack[DSP++] = v;
+	CHECK(ctx, DSP(ctx) < ZF_DSTACK_SIZE, ZF_ABORT_DSTACK_OVERRUN);
+	trace(ctx, "»" ZF_CELL_FMT " ", v);
+	ctx->dstack[DSP(ctx)++] = v;
 }
 
 
-zf_cell zf_pop(void)
+zf_cell zf_pop(zf_ctx *ctx)
 {
 	zf_cell v;
-	CHECK(DSP > 0, ZF_ABORT_DSTACK_UNDERRUN);
-	v = dstack[--DSP];
-	trace("«" ZF_CELL_FMT " ", v);
+	CHECK(ctx, DSP(ctx) > 0, ZF_ABORT_DSTACK_UNDERRUN);
+	v = ctx->dstack[--DSP(ctx)];
+	trace(ctx, "«" ZF_CELL_FMT " ", v);
 	return v;
 }
 
 
-zf_cell zf_pick(zf_addr n)
+zf_cell zf_pick(zf_ctx *ctx, zf_addr n)
 {
-	CHECK(n < DSP, ZF_ABORT_DSTACK_UNDERRUN);
-	return dstack[DSP-n-1];
+	CHECK(ctx, n < DSP(ctx), ZF_ABORT_DSTACK_UNDERRUN);
+	return ctx->dstack[DSP(ctx)-n-1];
 }
 
 
-static void zf_pushr(zf_cell v)
+static void zf_pushr(zf_ctx *ctx, zf_cell v)
 {
-	CHECK(RSP < ZF_RSTACK_SIZE, ZF_ABORT_RSTACK_OVERRUN);
-	trace("r»" ZF_CELL_FMT " ", v);
-	rstack[RSP++] = v;
+	CHECK(ctx, RSP(ctx) < ZF_RSTACK_SIZE, ZF_ABORT_RSTACK_OVERRUN);
+	trace(ctx, "r»" ZF_CELL_FMT " ", v);
+	ctx->rstack[RSP(ctx)++] = v;
 }
 
 
-static zf_cell zf_popr(void)
+static zf_cell zf_popr(zf_ctx *ctx)
 {
 	zf_cell v;
-	CHECK(RSP > 0, ZF_ABORT_RSTACK_UNDERRUN);
-	v = rstack[--RSP];
-	trace("r«" ZF_CELL_FMT " ", v);
+	CHECK(ctx, RSP(ctx) > 0, ZF_ABORT_RSTACK_UNDERRUN);
+	v = ctx->rstack[--RSP(ctx)];
+	trace(ctx, "r«" ZF_CELL_FMT " ", v);
 	return v;
 }
 
-zf_cell zf_pickr(zf_addr n)
+zf_cell zf_pickr(zf_ctx *ctx, zf_addr n)
 {
-	CHECK(n < RSP, ZF_ABORT_RSTACK_UNDERRUN);
-	return rstack[RSP-n-1];
+	CHECK(ctx, n < RSP(ctx), ZF_ABORT_RSTACK_UNDERRUN);
+	return ctx->rstack[RSP(ctx)-n-1];
 }
 
 
@@ -225,21 +211,21 @@ zf_cell zf_pickr(zf_addr n)
  * All access to dictionary memory is done through these functions.
  */
 
-static zf_addr dict_put_bytes(zf_addr addr, const void *buf, size_t len)
+static zf_addr dict_put_bytes(zf_ctx *ctx, zf_addr addr, const void *buf, size_t len)
 {
 	const uint8_t *p = (const uint8_t *)buf;
 	size_t i = len;
-	CHECK(addr < ZF_DICT_SIZE-len, ZF_ABORT_OUTSIDE_MEM);
-	while(i--) dict[addr++] = *p++;
+	CHECK(ctx, addr < ZF_DICT_SIZE-len, ZF_ABORT_OUTSIDE_MEM);
+	while(i--) ctx->dict[addr++] = *p++;
 	return len;
 }
 
 
-static void dict_get_bytes(zf_addr addr, void *buf, size_t len)
+static void dict_get_bytes(zf_ctx *ctx, zf_addr addr, void *buf, size_t len)
 {
 	uint8_t *p = (uint8_t *)buf;
-	CHECK(addr < ZF_DICT_SIZE-len, ZF_ABORT_OUTSIDE_MEM);
-	while(len--) *p++ = dict[addr++];
+	CHECK(ctx, addr < ZF_DICT_SIZE-len, ZF_ABORT_OUTSIDE_MEM);
+	while(len--) *p++ = ctx->dict[addr++];
 }
 
 
@@ -254,41 +240,41 @@ static void dict_get_bytes(zf_addr addr, void *buf, size_t len)
  */
 
 #if ZF_ENABLE_TYPED_MEM_ACCESS
-#define GET(s, t) if(size == s) { t v ## t; dict_get_bytes(addr, &v ## t, sizeof(t)); *v = v ## t; return sizeof(t); };
-#define PUT(s, t, val) if(size == s) { t v ## t = val; return dict_put_bytes(addr, &v ## t, sizeof(t)); }
+#define GET(s, t) if(size == s) { t v ## t; dict_get_bytes(ctx, addr, &v ## t, sizeof(t)); *v = v ## t; return sizeof(t); };
+#define PUT(s, t, val) if(size == s) { t v ## t = val; return dict_put_bytes(ctx, addr, &v ## t, sizeof(t)); }
 #else
 #define GET(s, t)
 #define PUT(s, t, val)
 #endif
 
-static zf_addr dict_put_cell_typed(zf_addr addr, zf_cell v, zf_mem_size size)
+static zf_addr dict_put_cell_typed(zf_ctx *ctx, zf_addr addr, zf_cell v, zf_mem_size size)
 {
 	unsigned int vi = v;
 	uint8_t t[2];
 
-	trace("\n+" ZF_ADDR_FMT " " ZF_ADDR_FMT, addr, (zf_addr)v);
+	trace(ctx, "\n+" ZF_ADDR_FMT " " ZF_ADDR_FMT, addr, (zf_addr)v);
 
 	if(size == ZF_MEM_SIZE_VAR) {
 		if((v - vi) == 0) {
 			if(vi < 128) {
-				trace(" ¹");
+				trace(ctx, " ¹");
 				t[0] = vi;
-				return dict_put_bytes(addr, t, 1);
+				return dict_put_bytes(ctx, addr, t, 1);
 			}
 			if(vi < 16384) {
-				trace(" ²");
+				trace(ctx, " ²");
 				t[0] = (vi >> 8) | 0x80;
 				t[1] = vi;
-				return dict_put_bytes(addr, t, sizeof(t));
+				return dict_put_bytes(ctx, addr, t, sizeof(t));
 			}
 		}
 	}
 
 	if(size == ZF_MEM_SIZE_VAR || size == ZF_MEM_SIZE_VAR_MAX) {
-		trace(" ⁵");
+		trace(ctx, " ⁵");
 		t[0] = 0xff;
-		return dict_put_bytes(addr+0, t, 1) + 
-		       dict_put_bytes(addr+1, &v, sizeof(v));
+		return dict_put_bytes(ctx, addr+0, t, 1) + 
+		       dict_put_bytes(ctx, addr+1, &v, sizeof(v));
 	} 
 	
 	PUT(ZF_MEM_SIZE_CELL, zf_cell, v);
@@ -299,20 +285,24 @@ static zf_addr dict_put_cell_typed(zf_addr addr, zf_cell v, zf_mem_size size)
 	PUT(ZF_MEM_SIZE_S16, int16_t, vi);
 	PUT(ZF_MEM_SIZE_S32, int32_t, vi);
 
-	zf_abort(ZF_ABORT_INVALID_SIZE);
+	zf_abort(ctx, ZF_ABORT_INVALID_SIZE);
 	return 0;
 }
 
 
-static zf_addr dict_get_cell_typed(zf_addr addr, zf_cell *v, zf_mem_size size)
+/* 
+ * Get cell from dictionary memory, with specified cell size encoding;
+ * returns the number of bytes read
+ */
+static zf_addr dict_get_cell_typed(zf_ctx *ctx, zf_addr addr, zf_cell *v, zf_mem_size size)
 {
 	uint8_t t[2];
-	dict_get_bytes(addr, t, sizeof(t));
+	dict_get_bytes(ctx, addr, t, sizeof(t));
 
 	if(size == ZF_MEM_SIZE_VAR) {
 		if(t[0] & 0x80) {
 			if(t[0] == 0xff) {
-				dict_get_bytes(addr+1, v, sizeof(*v));
+				dict_get_bytes(ctx, addr+1, v, sizeof(*v));
 				return 1 + sizeof(*v);
 			} else {
 				*v = ((t[0] & 0x3f) << 8) + t[1];
@@ -332,7 +322,7 @@ static zf_addr dict_get_cell_typed(zf_addr addr, zf_cell *v, zf_mem_size size)
 	GET(ZF_MEM_SIZE_S16, int16_t);
 	GET(ZF_MEM_SIZE_S32, int32_t);
 
-	zf_abort(ZF_ABORT_INVALID_SIZE);
+	zf_abort(ctx, ZF_ABORT_INVALID_SIZE);
 	return 0;
 }
 
@@ -341,73 +331,73 @@ static zf_addr dict_get_cell_typed(zf_addr addr, zf_cell *v, zf_mem_size size)
  * Shortcut functions for cell access with variable cell size
  */
 
-static zf_addr dict_put_cell(zf_addr addr, zf_cell v)
+static zf_addr dict_put_cell(zf_ctx *ctx, zf_addr addr, zf_cell v)
 {
-	return dict_put_cell_typed(addr, v, ZF_MEM_SIZE_VAR);
+	return dict_put_cell_typed(ctx, addr, v, ZF_MEM_SIZE_VAR);
 }
 
 
-static zf_addr dict_get_cell(zf_addr addr, zf_cell *v)
+static zf_addr dict_get_cell(zf_ctx *ctx, zf_addr addr, zf_cell *v)
 {
-	return dict_get_cell_typed(addr, v, ZF_MEM_SIZE_VAR);
+	return dict_get_cell_typed(ctx, addr, v, ZF_MEM_SIZE_VAR);
 }
 
 
 /*
- * Generic dictionary adding, these functions all add at the HERE pointer and
+ * Generic dictionary adding, these functions all add at the HERE(ctx) pointer and
  * increase the pointer
  */
 
-static void dict_add_cell_typed(zf_cell v, zf_mem_size size)
+static void dict_add_cell_typed(zf_ctx *ctx, zf_cell v, zf_mem_size size)
 {
-	HERE += dict_put_cell_typed(HERE, v, size);
-	trace(" ");
+	HERE(ctx) += dict_put_cell_typed(ctx, HERE(ctx), v, size);
+	trace(ctx, " ");
 }
 
 
-static void dict_add_cell(zf_cell v)
+static void dict_add_cell(zf_ctx *ctx, zf_cell v)
 {
-	dict_add_cell_typed(v, ZF_MEM_SIZE_VAR);
+	dict_add_cell_typed(ctx, v, ZF_MEM_SIZE_VAR);
 }
 
 
-static void dict_add_op(zf_addr op)
+static void dict_add_op(zf_ctx *ctx, zf_addr op)
 {
-	dict_add_cell(op);
-	trace("+%s ", op_name(op));
+	dict_add_cell(ctx, op);
+	trace(ctx, "+%s ", op_name(ctx, op));
 }
 
 
-static void dict_add_lit(zf_cell v)
+static void dict_add_lit(zf_ctx *ctx, zf_cell v)
 {
-	dict_add_op(PRIM_LIT);
-	dict_add_cell(v);
+	dict_add_op(ctx, PRIM_LIT);
+	dict_add_cell(ctx, v);
 }
 
 
-static void dict_add_str(const char *s)
+static void dict_add_str(zf_ctx *ctx, const char *s)
 {
 	size_t l;
-	trace("\n+" ZF_ADDR_FMT " " ZF_ADDR_FMT " s '%s'", HERE, 0, s);
+	trace(ctx, "\n+" ZF_ADDR_FMT " " ZF_ADDR_FMT " s '%s'", HERE(ctx), 0, s);
 	l = strlen(s);
-	HERE += dict_put_bytes(HERE, s, l);
+	HERE(ctx) += dict_put_bytes(ctx, HERE(ctx), s, l);
 }
 
 
 /*
- * Create new word, adjusting HERE and LATEST accordingly
+ * Create new word, adjusting HERE(ctx) and LATEST(ctx) accordingly
  */
 
-static void create(const char *name, int flags)
+static void create(zf_ctx *ctx, const char *name, int flags)
 {
 	zf_addr here_prev;
-	trace("\n=== create '%s'", name);
-	here_prev = HERE;
-	dict_add_cell((strlen(name)) | flags);
-	dict_add_cell(LATEST);
-	dict_add_str(name);
-	LATEST = here_prev;
-	trace("\n===");
+	trace(ctx, "\n=== create '%s'", name);
+	here_prev = HERE(ctx);
+	dict_add_cell(ctx, (strlen(name)) | flags);
+	dict_add_cell(ctx, LATEST(ctx));
+	dict_add_str(ctx, name);
+	LATEST(ctx) = here_prev;
+	trace(ctx, "\n===");
 }
 
 
@@ -415,20 +405,20 @@ static void create(const char *name, int flags)
  * Find word in dictionary, returning address and execution token
  */
 
-static int find_word(const char *name, zf_addr *word, zf_addr *code)
+static int find_word(zf_ctx *ctx, const char *name, zf_addr *word, zf_addr *code)
 {
-	zf_addr w = LATEST;
+	zf_addr w = LATEST(ctx);
 	size_t namelen = strlen(name);
 
 	while(w) {
 		zf_cell link, d;
 		zf_addr p = w;
 		size_t len;
-		p += dict_get_cell(p, &d);
-		p += dict_get_cell(p, &link);
+		p += dict_get_cell(ctx, p, &d);
+		p += dict_get_cell(ctx, p, &link);
 		len = ZF_FLAG_LEN((int)d);
 		if(len == namelen) {
-			const char *name2 = (const char *)&dict[p];
+			const char *name2 = (const char *)&ctx->dict[p];
 			if(memcmp(name, name2, len) == 0) {
 				*word = w;
 				*code = p + len;
@@ -446,11 +436,11 @@ static int find_word(const char *name, zf_addr *word, zf_addr *code)
  * Set 'immediate' flag in last compiled word
  */
 
-static void make_immediate(void)
+static void make_immediate(zf_ctx *ctx)
 {
 	zf_cell lenflags;
-	dict_get_cell(LATEST, &lenflags);
-	dict_put_cell(LATEST, (int)lenflags | ZF_FLAG_IMMEDIATE);
+	dict_get_cell(ctx, LATEST(ctx), &lenflags);
+	dict_put_cell(ctx, LATEST(ctx), (int)lenflags | ZF_FLAG_IMMEDIATE);
 }
 
 
@@ -458,34 +448,34 @@ static void make_immediate(void)
  * Inner interpreter
  */
 
-static void run(const char *input)
+static void run(zf_ctx *ctx, const char *input)
 {
-	while(ip != 0) {
+	while(ctx->ip != 0) {
 		zf_cell d;
-		zf_addr i, ip_org = ip;
-		zf_addr l = dict_get_cell(ip, &d);
+		zf_addr i, ip_org = ctx->ip;
+		zf_addr l = dict_get_cell(ctx, ctx->ip, &d);
 		zf_addr code = d;
 
-		trace("\n "ZF_ADDR_FMT " " ZF_ADDR_FMT " ", ip, code);
-		for(i=0; i<RSP; i++) trace("┊  ");
+		trace(ctx, "\n "ZF_ADDR_FMT " " ZF_ADDR_FMT " ", ctx->ip, code);
+		for(i=0; i<RSP(ctx); i++) trace(ctx, "┊  ");
 		
-		ip += l;
+		ctx->ip += l;
 
-		if(code <= PRIM_COUNT) {
-			do_prim((zf_prim)code, input);
+		if(code < PRIM_COUNT) {
+			do_prim(ctx, (zf_prim)code, input);
 
 			/* If the prim requests input, restore IP so that the
 			 * next time around we call the same prim again */
 
-			if(input_state != ZF_INPUT_INTERPRET) {
-				ip = ip_org;
+			if(ctx->input_state != ZF_INPUT_INTERPRET) {
+				ctx->ip = ip_org;
 				break;
 			}
 
 		} else {
-			trace("%s/" ZF_ADDR_FMT " ", op_name(code), code);
-			zf_pushr(ip);
-			ip = code;
+			trace(ctx, "%s/" ZF_ADDR_FMT " ", op_name(ctx, code), code);
+			zf_pushr(ctx, ctx->ip);
+			ctx->ip = code;
 		}
 
 		input = NULL;
@@ -497,25 +487,31 @@ static void run(const char *input)
  * Execute bytecode from given address
  */
 
-static void execute(zf_addr addr)
+static void execute(zf_ctx *ctx, zf_addr addr)
 {
-	ip = addr;
-	RSP = 0;
-	zf_pushr(0);
+	ctx->ip = addr;
+	RSP(ctx) = 0;
+	zf_pushr(ctx, 0);
 
-	trace("\n[%s/" ZF_ADDR_FMT "] ", op_name(ip), ip);
-	run(NULL);
+	trace(ctx, "\n[%s/" ZF_ADDR_FMT "] ", op_name(ctx, ctx->ip), ctx->ip);
+	run(ctx, NULL);
 
 }
 
 
-static zf_addr peek(zf_addr addr, zf_cell *val, int len)
+/* 
+ * Peek at memory, either user variables or dictionary memory,
+ * returns number of bytes read
+ */
+static zf_addr peek(zf_ctx *ctx, zf_addr addr, zf_cell *val, zf_mem_size size)
 {
 	if(addr < ZF_USERVAR_COUNT) {
-		*val = uservar[addr];
+		/* Special case for user variables */
+		*val = ctx->uservar[addr];
 		return 1;
 	} else {
-		return dict_get_cell_typed(addr, val, (zf_mem_size)len);
+		/* General case for dictionary memory */
+		return dict_get_cell_typed(ctx, addr, val, size);
 	}
 
 }
@@ -525,231 +521,276 @@ static zf_addr peek(zf_addr addr, zf_cell *val, int len)
  * Run primitive opcode
  */
 
-static void do_prim(zf_prim op, const char *input)
+static void do_prim(zf_ctx *ctx, zf_prim op, const char *input)
 {
 	zf_cell d1, d2, d3;
-	zf_addr addr, len;
+	zf_addr addr, code;
+	zf_mem_size size;
 
-	trace("(%s) ", op_name(op));
+	trace(ctx, "(%s) ", op_name(ctx, op));
 
 	switch(op) {
 
 		case PRIM_COL:
+			/* Start of word definition */
 			if(input == NULL) {
-				input_state = ZF_INPUT_PASS_WORD;
+				ctx->input_state = ZF_INPUT_PASS_WORD;
 			} else {
-				create(input, 0);
-				COMPILING = 1;
+				create(ctx, input, 0);
+				COMPILING(ctx) = 1;
 			}
 			break;
 
 		case PRIM_LTZ:
-			zf_push(zf_pop() < 0);
+			/* Push true if less than zero, else false */
+			zf_push(ctx, zf_pop(ctx) < 0 ? ZF_TRUE : ZF_FALSE);
 			break;
 
 		case PRIM_SEMICOL:
-			dict_add_op(PRIM_EXIT);
-			trace("\n===");
-			COMPILING = 0;
+			/* End of word definition */
+			dict_add_op(ctx, PRIM_EXIT);
+			trace(ctx, "\n===");
+			COMPILING(ctx) = 0;
+			break;
+
+		case PRIM_LITERAL:
+			/* At compile time, compiles a value from the stack into the
+			 * definition as a literal. At run time, the value will be pushed
+			 * on the stack. */
+			if(COMPILING(ctx)) dict_add_lit(ctx, zf_pop(ctx));
+			/* FIXME: else abort "!compiling"? */
 			break;
 
 		case PRIM_LIT:
-			ip += dict_get_cell(ip, &d1);
-			zf_push(d1);
+			/* At run time, push next value from dictionary on stack */
+			ctx->ip += dict_get_cell(ctx, ctx->ip, &d1);
+			zf_push(ctx, d1);
 			break;
 
 		case PRIM_EXIT:
-			ip = zf_popr();
+			/* Return from word */
+			ctx->ip = zf_popr(ctx);
 			break;
 		
 		case PRIM_LEN:
-			len = zf_pop();
-			addr = zf_pop();
-			zf_push(peek(addr, &d1, len));
+			/* Get length of cell; consumes size encoding and address */
+			size = zf_pop(ctx);
+			addr = zf_pop(ctx);
+			zf_push(ctx, peek(ctx, addr, &d1, size));
 			break;
 
 		case PRIM_PEEK:
-			len = zf_pop();
-			addr = zf_pop();
-			peek(addr, &d1, len);
-			zf_push(d1);
+			/* Peek at memory; consumes size encoding and address */
+			size = zf_pop(ctx);
+			addr = zf_pop(ctx);
+			peek(ctx, addr, &d1, size);
+			zf_push(ctx, d1);
 			break;
 
 		case PRIM_POKE:
-			d2 = zf_pop();
-			addr = zf_pop();
-			d1 = zf_pop();
+			/* Poke memory; consumes size encoding, address, and value */
+			size = zf_pop(ctx);
+			addr = zf_pop(ctx);
+			d1 = zf_pop(ctx);
 			if(addr < ZF_USERVAR_COUNT) {
-				uservar[addr] = d1;
-				break;
+				ctx->uservar[addr] = d1;
+			} else {
+				dict_put_cell_typed(ctx, addr, d1, size);
 			}
-			dict_put_cell_typed(addr, d1, (zf_mem_size)d2);
 			break;
 
 		case PRIM_SWAP:
-			d1 = zf_pop(); d2 = zf_pop();
-			zf_push(d1); zf_push(d2);
+			/* Swap top two elements on stack */
+			d1 = zf_pop(ctx); d2 = zf_pop(ctx);
+			zf_push(ctx, d1); zf_push(ctx, d2);
 			break;
 
 		case PRIM_ROT:
-			d1 = zf_pop(); d2 = zf_pop(); d3 = zf_pop();
-			zf_push(d2); zf_push(d1); zf_push(d3);
+			/* Rotate top three elements on stack */
+			d1 = zf_pop(ctx); d2 = zf_pop(ctx); d3 = zf_pop(ctx);
+			zf_push(ctx, d2); zf_push(ctx, d1); zf_push(ctx, d3);
 			break;
 
 		case PRIM_DROP:
-			zf_pop();
+			/* Drop top element from stack */
+			zf_pop(ctx);
 			break;
 
 		case PRIM_DUP:
-			d1 = zf_pop();
-			zf_push(d1); zf_push(d1);
+			/* Duplicate top element on stack */
+			d1 = zf_pop(ctx);
+			zf_push(ctx, d1); zf_push(ctx, d1);
 			break;
 
 		case PRIM_ADD:
-			d1 = zf_pop(); d2 = zf_pop();
-			zf_push(d1 + d2);
+			/* Pop and add top two elements on stack */
+			d1 = zf_pop(ctx); d2 = zf_pop(ctx);
+			zf_push(ctx, d1 + d2);
 			break;
 
 		case PRIM_SYS:
-			d1 = zf_pop();
-			input_state = zf_host_sys((zf_syscall_id)d1, input);
-			if(input_state != ZF_INPUT_INTERPRET) {
-				zf_push(d1); /* re-push id to resume */
+			/* Perform host system call */
+			d1 = zf_pop(ctx);
+			ctx->input_state = zf_host_sys(ctx, (zf_syscall_id)d1, input);
+			if(ctx->input_state != ZF_INPUT_INTERPRET) {
+				zf_push(ctx, d1); /* re-push id to resume */
 			}
 			break;
 
 		case PRIM_PICK:
-			addr = zf_pop();
-			zf_push(zf_pick(addr));
+			/* Pick n-th element from stack */
+			addr = zf_pop(ctx);
+			zf_push(ctx, zf_pick(ctx, addr));
 			break;
 		
 		case PRIM_PICKR:
-			addr = zf_pop();
-			zf_push(zf_pickr(addr));
+			/* Pick n-th element from return stack */
+			addr = zf_pop(ctx);
+			zf_push(ctx, zf_pickr(ctx, addr));
 			break;
 
 		case PRIM_SUB:
-			d1 = zf_pop(); d2 = zf_pop();
-			zf_push(d2 - d1);
+			/* Subtract top element on stack from next element */
+			d1 = zf_pop(ctx); d2 = zf_pop(ctx);
+			zf_push(ctx, d2 - d1);
 			break;
 
 		case PRIM_MUL:
-			zf_push(zf_pop() * zf_pop());
+			/* Multiply top two elements on stack */
+			zf_push(ctx, zf_pop(ctx) * zf_pop(ctx));
 			break;
 
 		case PRIM_DIV:
-			if((d2 = zf_pop()) == 0) {
-				zf_abort(ZF_ABORT_DIVISION_BY_ZERO);
+			/* Divide next element on stack by top element */
+			if((d2 = zf_pop(ctx)) == 0) {
+				zf_abort(ctx, ZF_ABORT_DIVISION_BY_ZERO);
 			}
-			d1 = zf_pop();
-			zf_push(d1 / d2);
+			d1 = zf_pop(ctx);
+			zf_push(ctx, d1 / d2);
 			break;
 
 		case PRIM_MOD:
-			if((int)(d2 = zf_pop()) == 0) {
-				zf_abort(ZF_ABORT_DIVISION_BY_ZERO);
+			/* Modulo next element on stack by top element */
+			if((int)(d2 = zf_pop(ctx)) == 0) {
+				zf_abort(ctx, ZF_ABORT_DIVISION_BY_ZERO);
 			}
-			d1 = zf_pop();
-			zf_push((int)d1 % (int)d2);
+			d1 = zf_pop(ctx);
+			zf_push(ctx, (int)d1 % (int)d2);
 			break;
 
 		case PRIM_IMMEDIATE:
-			make_immediate();
+			/* Set immediate flag in next word */
+			make_immediate(ctx);
 			break;
 
 		case PRIM_JMP:
-			ip += dict_get_cell(ip, &d1);
-			trace("ip " ZF_ADDR_FMT "=>" ZF_ADDR_FMT, ip, (zf_addr)d1);
-			ip = d1;
+			/* Jump to address */
+			ctx->ip += dict_get_cell(ctx, ctx->ip, &d1);
+			trace(ctx, "ip " ZF_ADDR_FMT "=>" ZF_ADDR_FMT, ctx->ip, (zf_addr)d1);
+			ctx->ip = d1;
 			break;
 
 		case PRIM_JMP0:
-			ip += dict_get_cell(ip, &d1);
-			if(zf_pop() == 0) {
-				trace("ip " ZF_ADDR_FMT "=>" ZF_ADDR_FMT, ip, (zf_addr)d1);
-				ip = d1;
+			/* Jump to address if top of stack is zero */
+			ctx->ip += dict_get_cell(ctx, ctx->ip, &d1);
+			if(zf_pop(ctx) == 0) {
+				trace(ctx, "ip " ZF_ADDR_FMT "=>" ZF_ADDR_FMT, ctx->ip, (zf_addr)d1);
+				ctx->ip = d1;
 			}
 			break;
 
 		case PRIM_TICK:
-			if (COMPILING) {
-				ip += dict_get_cell(ip, &d1);
-				trace("%s/", op_name(d1));
-				zf_push(d1);
+			/* Compile next word */
+			if (COMPILING(ctx)) {
+				ctx->ip += dict_get_cell(ctx, ctx->ip, &d1);
+				trace(ctx, "%s/", op_name(ctx, d1));
+				zf_push(ctx, d1);
 			}
 			else {
 				if (input) {
-					if (find_word(input,&addr,&len)) zf_push(len);
-					else zf_abort(ZF_ABORT_INTERNAL_ERROR);
+					if (find_word(ctx, input,&addr,&code)) zf_push(ctx, code);
+					else zf_abort(ctx, ZF_ABORT_INTERNAL_ERROR);
 				}
-				else input_state = ZF_INPUT_PASS_WORD;
+				else ctx->input_state = ZF_INPUT_PASS_WORD;
 			}
 					
 			break;
 
 		case PRIM_COMMA:
-			d2 = zf_pop();
-			d1 = zf_pop();
-			dict_add_cell_typed(d1, (zf_mem_size)d2);
+			/* Compile literal value; consumes size encoding, value */
+			size = zf_pop(ctx);
+			d1 = zf_pop(ctx);
+			dict_add_cell_typed(ctx, d1, size);
 			break;
 
 		case PRIM_COMMENT:
+			/* Skip to matching ')' */
 			if(!input || input[0] != ')') {
-				input_state = ZF_INPUT_PASS_CHAR;
+				ctx->input_state = ZF_INPUT_PASS_CHAR;
 			}
 			break;
 
 		case PRIM_PUSHR:
-			zf_pushr(zf_pop());
+			/* Push top of data stack to return stack */
+			zf_pushr(ctx, zf_pop(ctx));
 			break;
 
 		case PRIM_POPR:
-			zf_push(zf_popr());
+			/* Pop top of return stack to data stack */
+			zf_push(ctx, zf_popr(ctx));
 			break;
 
 		case PRIM_EQUAL:
-			zf_push(zf_pop() == zf_pop());
+			/* Push true if top two elements on stack are equal, else false */
+			zf_push(ctx, zf_pop(ctx) == zf_pop(ctx) ? ZF_TRUE : ZF_FALSE);
 			break;
 
 		case PRIM_KEY:
+			/* Get next character from input stream */
 			if(input == NULL) {
-				input_state = ZF_INPUT_PASS_CHAR;
+				ctx->input_state = ZF_INPUT_PASS_CHAR;
 			} else {
-				zf_push(input[0]);
+				zf_push(ctx, input[0]);
 			}
 			break;
 
 		case PRIM_LITS:
-			ip += dict_get_cell(ip, &d1);
-			zf_push(ip);
-			zf_push(d1);
-			ip += d1;
+			/* Literal string */
+			ctx->ip += dict_get_cell(ctx, ctx->ip, &d1);
+			zf_push(ctx, ctx->ip);
+			zf_push(ctx, d1);
+			ctx->ip += d1;
 			break;
 		
 		case PRIM_AND:
-			zf_push((zf_int)zf_pop() & (zf_int)zf_pop());
+			/* Bitwise AND of top two elements on stack */
+			zf_push(ctx, (zf_int)zf_pop(ctx) & (zf_int)zf_pop(ctx));
 			break;
 
 		case PRIM_OR:
-			zf_push((zf_int)zf_pop() | (zf_int)zf_pop());
+			/* Bitwise OR of top two elements on stack */
+			zf_push(ctx, (zf_int)zf_pop(ctx) | (zf_int)zf_pop(ctx));
 			break;
 
 		case PRIM_XOR:
-			zf_push((zf_int)zf_pop() ^ (zf_int)zf_pop());
+			/* Bitwise XOR of top two elements on stack */
+			zf_push(ctx, (zf_int)zf_pop(ctx) ^ (zf_int)zf_pop(ctx));
 			break;
 
 		case PRIM_SHL:
-			d1 = zf_pop();
-			zf_push((zf_int)zf_pop() << (zf_int)d1);
+			/* Shift left of next element by top element */
+			d1 = zf_pop(ctx);
+			zf_push(ctx, (zf_int)zf_pop(ctx) << (zf_int)d1);
 			break;
 
 		case PRIM_SHR:
-			d1 = zf_pop();
-			zf_push((zf_int)zf_pop() >> (zf_int)d1);
+			/* Shift right of next element by top element */
+			d1 = zf_pop(ctx);
+			zf_push(ctx, (zf_int)zf_pop(ctx) >> (zf_int)d1);
 			break;
 
 		default:
-			zf_abort(ZF_ABORT_INTERNAL_ERROR);
+			zf_abort(ctx, ZF_ABORT_INTERNAL_ERROR);
 			break;
 	}
 }
@@ -760,7 +801,7 @@ static void do_prim(zf_prim op, const char *input)
  * deferred primitive if it requested a word from the input stream.
  */
 
-static void handle_word(const char *buf)
+static void handle_word(zf_ctx *ctx, const char *buf)
 {
 	zf_addr w, c = 0;
 	int found;
@@ -768,15 +809,15 @@ static void handle_word(const char *buf)
 	/* If a word was requested by an earlier operation, resume with the new
 	 * word */
 
-	if(input_state == ZF_INPUT_PASS_WORD) {
-		input_state = ZF_INPUT_INTERPRET;
-		run(buf);
+	if(ctx->input_state == ZF_INPUT_PASS_WORD) {
+		ctx->input_state = ZF_INPUT_INTERPRET;
+		run(ctx, buf);
 		return;
 	}
 
 	/* Look up the word in the dictionary */
 
-	found = find_word(buf, &w, &c);
+	found = find_word(ctx, buf, &w, &c);
 
 	if(found) {
 
@@ -784,31 +825,31 @@ static void handle_word(const char *buf)
 
 		zf_cell d;
 		int flags;
-		dict_get_cell(w, &d);
+		dict_get_cell(ctx, w, &d);
 		flags = d;
 
-		if(COMPILING && (POSTPONE || !(flags & ZF_FLAG_IMMEDIATE))) {
+		if(COMPILING(ctx) && (POSTPONE(ctx) || !(flags & ZF_FLAG_IMMEDIATE))) {
 			if(flags & ZF_FLAG_PRIM) {
-				dict_get_cell(c, &d);
-				dict_add_op(d);
+				dict_get_cell(ctx, c, &d);
+				dict_add_op(ctx, d);
 			} else {
-				dict_add_op(c);
+				dict_add_op(ctx, c);
 			}
-			POSTPONE = 0;
+			POSTPONE(ctx) = 0;
 		} else {
-			execute(c);
+			execute(ctx, c);
 		}
 	} else {
 
 		/* Word not found: try to convert to a number and compile or push, depending
 		 * on state */
 
-		zf_cell v = zf_host_parse_num(buf);
+		zf_cell v = zf_host_parse_num(ctx, buf);
 
-		if(COMPILING) {
-			dict_add_lit(v);
+		if(COMPILING(ctx)) {
+			dict_add_lit(ctx, v);
 		} else {
-			zf_push(v);
+			zf_push(ctx, v);
 		}
 	}
 }
@@ -819,15 +860,15 @@ static void handle_word(const char *buf)
  * char to a deferred prim if it requested a character from the input stream
  */
 
-static void handle_char(char c)
+static void handle_char(zf_ctx *ctx, char c)
 {
 	static char buf[32];
 	static size_t len = 0;
 
-	if(input_state == ZF_INPUT_PASS_CHAR) {
+	if(ctx->input_state == ZF_INPUT_PASS_CHAR) {
 
-		input_state = ZF_INPUT_INTERPRET;
-		run(&c);
+		ctx->input_state = ZF_INPUT_INTERPRET;
+		run(ctx, &c);
 
 	} else if(c != '\0' && !isspace(c)) {
 
@@ -840,7 +881,7 @@ static void handle_char(char c)
 
 		if(len > 0) {
 			len = 0;
-			handle_word(buf);
+			handle_word(ctx, buf);
 		}
 	}
 }
@@ -850,14 +891,15 @@ static void handle_char(char c)
  * Initialisation
  */
 
-void zf_init(int enable_trace)
+void zf_init(zf_ctx *ctx, int enable_trace)
 {
-	HERE = ZF_USERVAR_COUNT * sizeof(zf_addr);
-	TRACE = enable_trace;
-	LATEST = 0;
-	DSP = 0;
-	RSP = 0;
-	COMPILING = 0;
+	ctx->uservar = (zf_addr *)ctx->dict;
+	HERE(ctx) = ZF_USERVAR_COUNT * sizeof(zf_addr);
+	TRACE(ctx) = enable_trace;
+	LATEST(ctx) = 0;
+	DSP(ctx) = 0;
+	RSP(ctx) = 0;
+	COMPILING(ctx) = 0;
 }
 
 
@@ -868,7 +910,7 @@ void zf_init(int enable_trace)
  * user variables.
  */
 
-static void add_prim(const char *name, zf_prim op)
+static void add_prim(zf_ctx *ctx, const char *name, zf_prim op)
 {
 	int imm = 0;
 
@@ -877,21 +919,21 @@ static void add_prim(const char *name, zf_prim op)
 		imm = 1;
 	}
 
-	create(name, ZF_FLAG_PRIM);
-	dict_add_op(op);
-	dict_add_op(PRIM_EXIT);
-	if(imm) make_immediate();
+	create(ctx, name, ZF_FLAG_PRIM);
+	dict_add_op(ctx, op);
+	dict_add_op(ctx, PRIM_EXIT);
+	if(imm) make_immediate(ctx);
 }
 
-static void add_uservar(const char *name, zf_addr addr)
+static void add_uservar(zf_ctx *ctx, const char *name, zf_addr addr)
 {
-	create(name, 0);
-	dict_add_lit(addr);
-	dict_add_op(PRIM_EXIT);
+	create(ctx, name, 0);
+	dict_add_lit(ctx, addr);
+	dict_add_op(ctx, PRIM_EXIT);
 }
 
 
-void zf_bootstrap(void)
+void zf_bootstrap(zf_ctx *ctx)
 {
 
 	/* Add primitives and user variables to dictionary */
@@ -899,12 +941,12 @@ void zf_bootstrap(void)
 	zf_addr i = 0;
 	const char *p;
 	for(p=prim_names; *p; p+=strlen(p)+1) {
-		add_prim(p, (zf_prim)i++);
+		add_prim(ctx, p, (zf_prim)i++);
 	} 
 
 	i = 0;
 	for(p=uservar_names; *p; p+=strlen(p)+1) {
-		add_uservar(p, i++);
+		add_uservar(ctx, p, i++);
 	}
 }
 
@@ -917,52 +959,52 @@ void zf_bootstrap(void) {}
  * Eval forth string
  */
 
-zf_result zf_eval(const char *buf)
+zf_result zf_eval(zf_ctx *ctx, const char *buf)
 {
-	zf_result r = (zf_result)setjmp(jmpbuf);
+	zf_result r = (zf_result)setjmp(ctx->jmpbuf);
 
 	if(r == ZF_OK) {
 		for(;;) {
-			handle_char(*buf);
+			handle_char(ctx, *buf);
 			if(*buf == '\0') {
 				return ZF_OK;
 			}
 			buf ++;
 		}
 	} else {
-		COMPILING = 0;
-		RSP = 0;
-		DSP = 0;
+		COMPILING(ctx) = 0;
+		RSP(ctx) = 0;
+		DSP(ctx) = 0;
 		return r;
 	}
 }
 
 
-void *zf_dump(size_t *len)
+void *zf_dump(zf_ctx *ctx, size_t *len)
 {
-	if(len) *len = sizeof(dict);
-	return dict;
+	if(len) *len = sizeof(ctx->dict);
+	return ctx->dict;
 }
 
-zf_result zf_uservar_set(zf_uservar_id uv, zf_cell v)
+zf_result zf_uservar_set(zf_ctx *ctx, zf_uservar_id uv, zf_cell v)
 {
 	zf_result result = ZF_ABORT_INVALID_USERVAR;
 
 	if (uv < ZF_USERVAR_COUNT) {
-		uservar[uv] = v;
+		ctx->uservar[uv] = v;
 		result = ZF_OK;
 	}
 
 	return result;
 }
 
-zf_result zf_uservar_get(zf_uservar_id uv, zf_cell *v)
+zf_result zf_uservar_get(zf_ctx *ctx, zf_uservar_id uv, zf_cell *v)
 {
 	zf_result result = ZF_ABORT_INVALID_USERVAR;
 
 	if (uv < ZF_USERVAR_COUNT) {
 		if (v != NULL) {
-			*v = uservar[uv];
+			*v = ctx->uservar[uv];
 		}
 		result = ZF_OK;
 	}
