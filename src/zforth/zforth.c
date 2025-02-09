@@ -709,7 +709,7 @@ static void do_prim(zf_ctx *ctx, zf_prim op, const char *input)
 			else {
 				if (input) {
 					if (find_word(ctx, input,&addr,&code)) zf_push(ctx, code);
-					else zf_abort(ctx, ZF_ABORT_INTERNAL_ERROR);
+					else zf_abort(ctx, ZF_ABORT_NOT_A_WORD);
 				}
 				else ctx->input_state = ZF_INPUT_PASS_WORD;
 			}
