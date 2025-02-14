@@ -169,7 +169,7 @@ zf_cell zf_pop(zf_ctx *ctx)
 {
 	zf_cell v;
 	CHECK(ctx, DSP(ctx) > 0, ZF_ABORT_DSTACK_UNDERRUN);
-	CHECK(ctx, DSP(ctx) < ZF_DSTACK_SIZE, ZF_ABORT_DSTACK_OVERRUN);
+	CHECK(ctx, DSP(ctx) <= ZF_DSTACK_SIZE, ZF_ABORT_DSTACK_OVERRUN);
 	v = ctx->dstack[--DSP(ctx)];
 	trace(ctx, "«" ZF_CELL_FMT " ", v);
 	return v;
@@ -179,7 +179,7 @@ zf_cell zf_pop(zf_ctx *ctx)
 zf_cell zf_pick(zf_ctx *ctx, zf_addr n)
 {
 	CHECK(ctx, n < DSP(ctx), ZF_ABORT_DSTACK_UNDERRUN);
-	CHECK(ctx, DSP(ctx) < ZF_DSTACK_SIZE, ZF_ABORT_DSTACK_OVERRUN);
+	CHECK(ctx, DSP(ctx) <= ZF_DSTACK_SIZE, ZF_ABORT_DSTACK_OVERRUN);
 	return ctx->dstack[DSP(ctx)-n-1];
 }
 
@@ -196,7 +196,7 @@ static zf_cell zf_popr(zf_ctx *ctx)
 {
 	zf_cell v;
 	CHECK(ctx, RSP(ctx) > 0, ZF_ABORT_RSTACK_UNDERRUN);
-	CHECK(ctx, RSP(ctx) < ZF_RSTACK_SIZE, ZF_ABORT_RSTACK_OVERRUN);
+	CHECK(ctx, RSP(ctx) <= ZF_RSTACK_SIZE, ZF_ABORT_RSTACK_OVERRUN);
 	v = ctx->rstack[--RSP(ctx)];
 	trace(ctx, "r«" ZF_CELL_FMT " ", v);
 	return v;
@@ -205,7 +205,7 @@ static zf_cell zf_popr(zf_ctx *ctx)
 zf_cell zf_pickr(zf_ctx *ctx, zf_addr n)
 {
 	CHECK(ctx, n < RSP(ctx), ZF_ABORT_RSTACK_UNDERRUN);
-	CHECK(ctx, RSP(ctx) < ZF_RSTACK_SIZE, ZF_ABORT_RSTACK_OVERRUN);
+	CHECK(ctx, RSP(ctx) <= ZF_RSTACK_SIZE, ZF_ABORT_RSTACK_OVERRUN);
 	return ctx->rstack[RSP(ctx)-n-1];
 }
 
