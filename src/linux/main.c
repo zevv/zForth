@@ -248,7 +248,6 @@ int main(int argc, char **argv)
 	argv += optind;
 
 	zf_ctx *ctx = malloc(sizeof(zf_ctx));
-	printf("%p\n", (void *)ctx);
 
 	/* Initialize zforth */
 
