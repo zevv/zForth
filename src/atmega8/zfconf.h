@@ -17,7 +17,7 @@
 
 
 /* Set to 1 to enable bootstrapping of the forth dictionary by adding the
- * primitives and user veriables. On small embedded systems you may choose to
+ * primitives and user variables. On small embedded systems you may choose to
  * leave this out and start by loading a cross-compiled dictionary instead.
  * Enabling adds a few hundred bytes to the .text and .rodata segments */
  
