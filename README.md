@@ -45,7 +45,7 @@ Some of zForth's highlights:
 - **Small footprint**: the kernel C code compiles to about 3 or 4 kB of machine
   code, depending on the architecture and chosen cell data types.
 
--- **Support for multiple instances**: The compiler and VM state is stored in a
+- **Support for multiple instances**: The compiler and VM state is stored in a
   struct, allowing multiple instances of zForth to run in parallel.
 
 - **Tracing**: zForth is able to show a nice trace of what it is doing under the
