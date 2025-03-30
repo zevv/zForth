@@ -265,5 +265,7 @@ r»0
  0032 0000 ┊  (exit) r«0 
 
 ````
+
 ### Dependencies
-- libreadline-dev 
+
+The zForth core itself has no external dependencies, the linux example depends on libreadline-dev.
