@@ -18,7 +18,7 @@
 : # ( n -- ) 0 ## ;
 
 ( dictionary access for jmp instructions; these make sure to always use the
-  maximium cell size for the target address to allow safe stubbing and
+  maximum cell size for the target address to allow safe stubbing and
   updating of a jump address. `64` is the magic number for ZF_ACCESS_VAR_MAX,
   see zforth.c for details )
 
