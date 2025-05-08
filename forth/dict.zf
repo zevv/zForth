@@ -1,36 +1,35 @@
-
 ( methods for handling the dictionary )
 
 ( 'next' increases the given dictionary address by the size of the cell
-  located at that address )
+  located at that address )
 
-: next dup # + ;
+: next ( addr -- addr' ) dup # + ;
 
 ( 'words' generates a list of all define words )
 
-: name dup @ 31 & swap next dup next rot tell @ ;
-: words latest @ begin name br dup 0 = until cr drop ;
+: name ( dict_entry_addr -- next_word_header_val ) dup @ 31 & swap next dup next rot tell @ ;
+: words ( -- ) latest @ begin name br dup 0 = until cr drop ;
 : prim? ( w -- bool ) @ 32 & ;
 : a->xt ( w -- xt ) dup dup @ 31 & swap next next + swap prim? if @ fi ;
-: xt->a ( xt -- w ) latest @ begin dup a->xt 2 pick = if swap drop exit fi next @ dup 0 = until swap drop ;
+: xt->a ( xt -- w_or_0 ) latest @ begin dup a->xt 2 pick = if swap drop exit fi next @ dup 0 = until swap drop ;
 : lit?jmp? ( a -- a boolean ) dup @ dup 1 = swap dup 18 = swap 19 = + + ;
-: disas ( a -- a ) dup dup . br br @ xt->a name drop lit?jmp? if br next dup @ . fi cr ;
+: disas ( instr_addr -- instr_addr_or_operand_addr ) dup dup . br br @ xt->a name drop lit?jmp? if br next dup @ . fi cr ;
 
 ( 'see' needs starting address on stack: e.g. ' words see )
 : see ( xt -- ) dup xt->a name cr drop begin disas next dup @ =0 until drop ;
 
 ( 'dump' memory make hex dump len bytes from addr )
-: hex_t ' lit ,  here dup , s" 0123456789abcdef" allot swap ! ; immediate
-: *hex_t hex_t ;
-: .hex *hex_t + @ emit ;
-: >nib ( n -- low high ) dup 15 & swap -16 & 16 / ;
-: ffemit ( n -- ) >nib .hex .hex ;
-: ffffemit ( n -- ) >nib >nib >nib { .hex 4 x} ;
-: @LSB ( addr -- LSB ) 2 @@ 255 & ;
-: between? ( n low_lim high_lim -- bool ) 2 pick > rot rot > & ; 
-: 8hex ( a -- a_new ) { dup @LSB ffemit 32 emit 1+ 8 x} 32 emit ;
-: 16ascii ( a -- a_new ) 124 emit { dup @LSB dup 31 127 between? if emit else drop 46 emit fi 1+ 16 x} 124 emit ;
-: .addr ( a -- ) ffffemit ."    " ;
-: 16line ( a -- a_new ) dup .addr dup { 8hex 2 x} drop 16ascii cr ;
-: dump ( addr len -- ) over + swap begin 16line over over < until drop drop ; 
+: hex_t ( -- addr_of_hex_table ) ' lit ,  here dup , s" 0123456789abcdef" allot swap ! ; immediate
+: *hex_t ( -- addr_of_hex_table ) hex_t ;
+: .hex ( digit_val -- ) *hex_t + @ emit ;
+: >nib ( byte -- low_nibble high_nibble ) dup 15 & swap -16 & 16 / ;
+: ffemit ( byte -- ) >nib .hex .hex ;
+: ffffemit ( word16 -- ) >nib >nib >nib { .hex 4 x} ;
+: @LSB ( addr -- byte_val ) 2 @@ 255 & ;
+: between? ( n low_exclusive high_exclusive -- bool ) 2 pick > rot rot > & ;
+: 8hex ( addr -- addr+8 ) { dup @LSB ffemit 32 emit 1+ 8 x} 32 emit ;
+: 16ascii ( addr -- addr+16 ) 124 emit { dup @LSB dup 31 127 between? if emit else drop 46 emit fi 1+ 16 x} 124 emit ;
+: .addr ( addr -- ) ffffemit ."   " ;
+: 16line ( addr -- addr+16 ) dup .addr dup { 8hex 2 x} drop 16ascii cr ;
+: dump ( addr len -- ) over + swap begin 16line over over < until drop drop ;
 
