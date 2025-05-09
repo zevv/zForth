@@ -899,11 +899,12 @@ void zf_init(zf_ctx *ctx, int enable_trace)
 {
 	ctx->uservar = (zf_addr *)ctx->dict;
 	HERE(ctx) = ZF_USERVAR_COUNT * sizeof(zf_addr);
-	TRACE(ctx) = enable_trace;
 	LATEST(ctx) = 0;
+	TRACE(ctx) = enable_trace;
+	COMPILING(ctx) = 0;
+	POSTPONE(ctx) = 0;
 	DSP(ctx) = 0;
 	RSP(ctx) = 0;
-	COMPILING(ctx) = 0;
 }
 
 
