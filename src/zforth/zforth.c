@@ -114,12 +114,12 @@ static const char *op_name(zf_ctx *ctx, zf_addr addr)
 
 	while(TRACE(ctx) && w) {
 		zf_addr xt, p = w;
-		zf_cell d, link, op2;
+		zf_cell d, size, op2;
 		int lenflags;
 
 		p += dict_get_cell(ctx, p, &d);
 		lenflags = d;
-		p += dict_get_cell(ctx, p, &link);
+		p += dict_get_cell(ctx, p, &size);
 		xt = p + ZF_FLAG_LEN(lenflags);
 		dict_get_cell(ctx, xt, &op2);
 
@@ -130,7 +130,7 @@ static const char *op_name(zf_ctx *ctx, zf_addr addr)
 			return name;
 		}
 
-		w = link;
+		w -= size;
 	}
 	return "?";
 }
@@ -398,7 +398,8 @@ static void create(zf_ctx *ctx, const char *name, int flags)
 	trace(ctx, "\n=== create '%s'", name);
 	here_prev = HERE(ctx);
 	dict_add_cell(ctx, (strlen(name)) | flags);
-	dict_add_cell(ctx, LATEST(ctx));
+	zf_addr size = here_prev - LATEST(ctx);
+	dict_add_cell(ctx, size);
 	dict_add_str(ctx, name);
 	LATEST(ctx) = here_prev;
 	trace(ctx, "\n===");
@@ -415,11 +416,11 @@ static int find_word(zf_ctx *ctx, const char *name, zf_addr *word, zf_addr *code
 	size_t namelen = strlen(name);
 
 	while(w) {
-		zf_cell link, d;
+		zf_cell size, d;
 		zf_addr p = w;
 		size_t len;
 		p += dict_get_cell(ctx, p, &d);
-		p += dict_get_cell(ctx, p, &link);
+		p += dict_get_cell(ctx, p, &size);
 		len = ZF_FLAG_LEN((int)d);
 		if(len == namelen) {
 			const char *name2 = (const char *)&ctx->dict[p];
@@ -429,7 +430,7 @@ static int find_word(zf_ctx *ctx, const char *name, zf_addr *word, zf_addr *code
 				return 1;
 			}
 		}
-		w = link;
+		w -= size;
 	}
 
 	return 0;
