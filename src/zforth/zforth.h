@@ -70,6 +70,13 @@ typedef struct {
 	/* setjmp env for handling aborts */
 	jmp_buf jmpbuf;
 
+	/* Input buffer */
+	char read_buf[32];
+	size_t read_len;
+
+	/* Name buffer */
+	char name_buf[32];
+
 	zf_addr *uservar;
 } zf_ctx;
 

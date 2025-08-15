@@ -110,7 +110,7 @@ static void do_trace(zf_ctx *ctx, const char *fmt, ...)
 static const char *op_name(zf_ctx *ctx, zf_addr addr)
 {
 	zf_addr w = LATEST(ctx);
-	static char name[32];
+	char *name = ctx->name_buf;
 
 	while(TRACE(ctx) && w) {
 		zf_addr xt, p = w;
@@ -866,9 +866,6 @@ static void handle_word(zf_ctx *ctx, const char *buf)
 
 static void handle_char(zf_ctx *ctx, char c)
 {
-	static char buf[32];
-	static size_t len = 0;
-
 	if(ctx->input_state == ZF_INPUT_PASS_CHAR) {
 
 		ctx->input_state = ZF_INPUT_INTERPRET;
@@ -876,16 +873,16 @@ static void handle_char(zf_ctx *ctx, char c)
 
 	} else if(c != '\0' && !isspace(c)) {
 
-		if(len < sizeof(buf)-1) {
-			buf[len++] = c;
-			buf[len] = '\0';
+		if(ctx->read_len < sizeof(ctx->read_buf)-1) {
+			ctx->read_buf[ctx->read_len++] = c;
+			ctx->read_buf[ctx->read_len] = '\0';
 		}
 
 	} else {
 
-		if(len > 0) {
-			len = 0;
-			handle_word(ctx, buf);
+		if(ctx->read_len > 0) {
+			ctx->read_len = 0;
+			handle_word(ctx, ctx->read_buf);
 		}
 	}
 }
@@ -898,6 +895,7 @@ static void handle_char(zf_ctx *ctx, char c)
 void zf_init(zf_ctx *ctx, int enable_trace)
 {
 	ctx->uservar = (zf_addr *)ctx->dict;
+	ctx->read_len = 0;
 	HERE(ctx) = ZF_USERVAR_COUNT * sizeof(zf_addr);
 	LATEST(ctx) = 0;
 	TRACE(ctx) = enable_trace;
